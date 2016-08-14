@@ -9,18 +9,69 @@
 	#include "WProgram.h"
 #endif
 
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <TimeLib.h>
+#include <NtpClientLib.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ESP8266mDNS.h>
 #include <FS.h>
 #include <Ticker.h>
 #include <ArduinoOTA.h>
+#include <ArduinoJson.h>
+
+#define CONFIG_FILE "/config.json"
+#define SECRET_FILE "/secret.json"
+
+typedef struct {
+	String ssid;
+	String password;
+	IPAddress  ip;
+	IPAddress  netmask;
+	IPAddress  gateway;
+	IPAddress  dns;
+	boolean dhcp;
+	String ntpServerName;
+	long updateNTPTimeEvery;
+	long timezone;
+	boolean daylight;
+	String DeviceName;
+} strConfig;
+
+typedef struct {
+	String APssid = "ESP"; // ChipID is appended to this name
+	String APpassword = "12345678";
+	boolean APenable = false; // AP disabled by default
+} strApConfig;
+
+typedef struct {
+	boolean auth;
+	String wwwUsername;
+	String wwwPassword;
+} strHTTPAuth;
 
 class AsyncFSWebServer : AsyncWebServer {
+public:
 	AsyncFSWebServer(uint16_t port);
+	void begin(FS* fs);
+	void handlePeriodic();
+	void secondTask();
+	void sendTimeData();
+	boolean load_config();
+	void defaultConfig();
+	boolean save_config();
 
-	void begin();
+protected:
+	strConfig _config; // General and WiFi configuration
+	strApConfig _apConfig; // Static AP config settings
+	strHTTPAuth _httpAuth;
+	FS* _fs;
+
+	Ticker _secondTk;
+	boolean _secondFlag;
+
+	AsyncWebSocket* ws;
 };
 
-#endif
-
+#endif // _FSWEBSERVERLIB_h
