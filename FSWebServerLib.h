@@ -31,22 +31,22 @@ typedef struct {
 	IPAddress  netmask;
 	IPAddress  gateway;
 	IPAddress  dns;
-	boolean dhcp;
+	bool dhcp;
 	String ntpServerName;
 	long updateNTPTimeEvery;
 	long timezone;
-	boolean daylight;
-	String DeviceName;
+	bool daylight;
+	String deviceName;
 } strConfig;
 
 typedef struct {
 	String APssid = "ESP"; // ChipID is appended to this name
 	String APpassword = "12345678";
-	boolean APenable = false; // AP disabled by default
+	bool APenable = false; // AP disabled by default
 } strApConfig;
 
 typedef struct {
-	boolean auth;
+	bool auth;
 	String wwwUsername;
 	String wwwPassword;
 } strHTTPAuth;
@@ -55,12 +55,10 @@ class AsyncFSWebServer : AsyncWebServer {
 public:
 	AsyncFSWebServer(uint16_t port);
 	void begin(FS* fs);
-	void handlePeriodic();
-	void secondTask();
-	void sendTimeData();
-	boolean load_config();
-	void defaultConfig();
-	boolean save_config();
+	void handle();
+	bool checkAuth(AsyncWebServerRequest *request);
+	void handleFileList(AsyncWebServerRequest *request);
+	bool handleFileRead(String path, AsyncWebServerRequest *request);
 
 protected:
 	strConfig _config; // General and WiFi configuration
@@ -68,10 +66,28 @@ protected:
 	strHTTPAuth _httpAuth;
 	FS* _fs;
 
-	Ticker _secondTk;
-	boolean _secondFlag;
+	//uint currentWifiStatus;
 
-	AsyncWebSocket* ws;
+	Ticker _secondTk;
+	bool _secondFlag;
+
+	AsyncWebSocket* _ws;
+
+	void secondTask();
+	void sendTimeData();
+	bool load_config();
+	void defaultConfig();
+	bool save_config();
+	bool loadHTTPAuth();
+	void configureWifiAP();
+	void configureWifi();
+	void ConfigureOTA(String password);
+	void serverInit();
+
+	//void secondTick();
+	
 };
+
+extern AsyncFSWebServer ESPHTTPServer;
 
 #endif // _FSWEBSERVERLIB_h
