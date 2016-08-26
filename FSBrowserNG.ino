@@ -1,4 +1,5 @@
 
+#
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <TimeLib.h>
@@ -10,18 +11,20 @@
 #include <Ticker.h>
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
+#include "FSWebServerLib.h"
 
 
 void setup()
 {
-
-  /* add setup code here */
-	
+	// WiFi is started inside library
+	SPIFFS.begin(); // Not really needed, checked inside library and started if needed
+	ESPHTTPServer.begin(&SPIFFS);
+	/* add setup code here */
 }
 
 void loop()
 {
+	/* add main program code here */
 
-  /* add main program code here */
-	
+	ESPHTTPServer.handle();	// Send websocket data to web browser
 }

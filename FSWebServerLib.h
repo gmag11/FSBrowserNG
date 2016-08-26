@@ -56,15 +56,16 @@ public:
 	AsyncFSWebServer(uint16_t port);
 	void begin(FS* fs);
 	void handle();
-	bool checkAuth(AsyncWebServerRequest *request);
-	void handleFileList(AsyncWebServerRequest *request);
-	bool handleFileRead(String path, AsyncWebServerRequest *request);
+	
 
 protected:
 	strConfig _config; // General and WiFi configuration
 	strApConfig _apConfig; // Static AP config settings
 	strHTTPAuth _httpAuth;
 	FS* _fs;
+	long wifiDisconnectedSince = 0;
+	String _browserMD5 = "";
+	uint32_t _updateSize = 0;
 
 	//uint currentWifiStatus;
 
@@ -79,13 +80,46 @@ protected:
 	void defaultConfig();
 	bool save_config();
 	bool loadHTTPAuth();
+	bool saveHTTPAuth();
 	void configureWifiAP();
 	void configureWifi();
 	void ConfigureOTA(String password);
 	void serverInit();
-
-	//void secondTick();
 	
+	void onWiFiGotIp(WiFiEventStationModeGotIP data);
+	void onWiFiDisconnected(WiFiEventStationModeDisconnected data);
+
+	void secondTick();
+	static void s_secondTick(void* arg);
+
+	String getMacAddress();
+
+	bool checkAuth(AsyncWebServerRequest *request);
+	void handleFileList(AsyncWebServerRequest *request);
+	//void handleFileRead_edit_html(AsyncWebServerRequest *request);
+	bool handleFileRead(AsyncWebServerRequest *request, String path);
+	void handleFileCreate(AsyncWebServerRequest *request);
+	void handleFileDelete(AsyncWebServerRequest *request);
+	void handleFileUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
+	void send_general_configuration_values_html(AsyncWebServerRequest *request);
+	void send_network_configuration_values_html(AsyncWebServerRequest *request);
+	void send_connection_state_values_html(AsyncWebServerRequest *request);
+	void send_information_values_html(AsyncWebServerRequest *request);
+	void send_NTP_configuration_values_html(AsyncWebServerRequest *request);
+	void send_network_configuration_html(AsyncWebServerRequest *request);
+	void send_general_configuration_html(AsyncWebServerRequest *request);
+	void send_NTP_configuration_html(AsyncWebServerRequest *request);
+	void restart_esp(AsyncWebServerRequest *request);
+	void send_wwwauth_configuration_values_html(AsyncWebServerRequest *request);
+	void send_wwwauth_configuration_html(AsyncWebServerRequest *request);
+	void send_update_firmware_values_html(AsyncWebServerRequest *request);
+	void setUpdateMD5(AsyncWebServerRequest *request);
+	void updateFirmware(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
+	void webSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length);
+
+	static String urldecode(String input); // (based on https://code.google.com/p/avr-netino/)
+	static unsigned char h2int(char c);
+	static boolean checkRange(String Value);
 };
 
 extern AsyncFSWebServer ESPHTTPServer;

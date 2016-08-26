@@ -9,17 +9,28 @@
 #define AP_ENABLE_BUTTON 4 // Button pin to enable AP during startup for configuration
 
 #include "FSWebServerLib.h"
+#include <StreamString.h>
 
 AsyncFSWebServer ESPHTTPServer(80);
+
+const char Page_WaitAndReload[] PROGMEM = R"=====(
+<meta http-equiv="refresh" content="10; URL=/config.html">
+Please Wait....Configuring and Restarting.
+)=====";
+
+const char Page_Restart[] PROGMEM = R"=====(
+<meta http-equiv="refresh" content="10; URL=/general.html">
+Please Wait....Configuring and Restarting.
+)=====";
 
 AsyncFSWebServer::AsyncFSWebServer(uint16_t port) : AsyncWebServer(port)
 {
 	
 }
 
-void secondTick(void *flag)
+void AsyncFSWebServer::secondTick()
 {
-	*static_cast<bool *>(flag) = true;
+	_secondFlag = true;
 }
 
 void AsyncFSWebServer::secondTask() {
@@ -27,6 +38,11 @@ void AsyncFSWebServer::secondTask() {
 	//DBG_OUTPUT_PORT.println(ntp->getTimeString());
 #endif // DEBUG_GLOBALH
 	sendTimeData();
+}
+
+void AsyncFSWebServer::s_secondTick(void* arg) {
+	AsyncFSWebServer* self = reinterpret_cast<AsyncFSWebServer*>(arg);
+	self->secondTask();
 }
 
 void AsyncFSWebServer::sendTimeData() {
@@ -81,7 +97,8 @@ void AsyncFSWebServer::begin(FS* fs)
 	if (CONNECTION_LED >= 0) {
 		digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
 	}
-	_fs->begin();
+	if (!_fs) // If SPIFFS is not started
+		_fs->begin();
 
 #ifdef DEBUG
 	{ // List files
@@ -101,7 +118,11 @@ void AsyncFSWebServer::begin(FS* fs)
 	}
 	loadHTTPAuth();
 	//WIFI INIT
-	WiFi.onEvent(WiFiEvent); // Register wifi Event to control connection LED
+
+	// Register wifi Event to control connection LED
+	WiFi.onStationModeGotIP(std::bind(&AsyncFSWebServer::onWiFiGotIp, this, _1));
+	WiFi.onStationModeDisconnected(std::bind(&AsyncFSWebServer::onWiFiDisconnected, this, _1));
+
 	WiFi.hostname(_config.deviceName.c_str());
 	if (AP_ENABLE_BUTTON >= 0) {
 		if (_apConfig.APenable) {
@@ -129,7 +150,7 @@ void AsyncFSWebServer::begin(FS* fs)
 		NTP.begin(_config.ntpServerName, _config.timezone / 10, _config.daylight);
 	}
 
-	_secondTk.attach(1, secondTick, (void *)this->_secondFlag); // Task to run periodic things every second
+	_secondTk.attach(1.0f, &AsyncFSWebServer::s_secondTick, static_cast<void*>(this)); // Task to run periodic things every second
 	*_ws = AsyncWebSocket("/ws");
 	serverInit(); // Configure and start Web server
 	AsyncWebServer::begin();
@@ -194,44 +215,23 @@ bool AsyncFSWebServer::load_config() {
 	//String("Virus_Detected!!!").toCharArray(config.ssid, 28); // Assign WiFi SSID
 	//String("LaJunglaSigloXX1@.").toCharArray(config.pass, 50); // Assign WiFi PASS
 
-	_config.ssid = json["ssid"].asString();
-	//String(ssid_str).toCharArray(config.ssid, 28);
+	_config.ssid = json["ssid"].as<const char *>();
 
-	_config.password = json["pass"].asString();
+	_config.password = json["pass"].as<const char *>();
 
-	_config.ip = IPAddress(json["ip"]);
-	_config.netmask = IPAddress(json["netmask"]);
-	_config.gateway = IPAddress(json["gateway"]);
-	_config.dns = IPAddress(json["dns"]);
+	_config.ip = IPAddress(json["ip"][0], json["ip"][1], json["ip"][2], json["ip"][3]);
+	_config.netmask = IPAddress(json["netmask"][0], json["netmask"][1], json["netmask"][2], json["netmask"][3]);
+	_config.gateway = IPAddress(json["gateway"][0], json["gateway"][1], json["gateway"][2], json["gateway"][3]);
+	_config.dns = IPAddress(json["dns"][0], json["dns"][1], json["dns"][2], json["dns"][3]);
 
-	/*_config.ip[0] = json["ip"][0];
-	_config.ip[1] = json["ip"][1];
-	_config.ip[2] = json["ip"][2];
-	_config.ip[3] = json["ip"][3];
-
-	_config.netmask[0] = json["netmask"][0];
-	_config.netmask[1] = json["netmask"][1];
-	_config.netmask[2] = json["netmask"][2];
-	_config.netmask[3] = json["netmask"][3];
-
-	_config.gateway[0] = json["gateway"][0];
-	_config.gateway[1] = json["gateway"][1];
-	_config.gateway[2] = json["gateway"][2];
-	_config.gateway[3] = json["gateway"][3];
-
-	_config.dns[0] = json["dns"][0];
-	_config.dns[1] = json["dns"][1];
-	_config.dns[2] = json["dns"][2];
-	_config.dns[3] = json["dns"][3];*/
-
-	_config.dhcp = json["dhcp"];
+	_config.dhcp = json["dhcp"].as<bool>();
 
 	//String(pass_str).toCharArray(config.pass, 28);
-	_config.ntpServerName = json["ntp"].asString();
-	_config.updateNTPTimeEvery = json["NTPperiod"];
-	_config.timezone = json["timeZone"];
-	_config.daylight = json["daylight"];
-	_config.deviceName = json["deviceName"].asString();
+	_config.ntpServerName = json["ntp"].as<const char *>();
+	_config.updateNTPTimeEvery = json["NTPperiod"].as<long>();
+	_config.timezone = json["timeZone"].as<long>();
+	_config.daylight = json["daylight"].as<long>();
+	_config.deviceName = json["deviceName"].as<const char *>();
 
 	//config.connectionLed = json["led"];
 
@@ -499,10 +499,10 @@ void AsyncFSWebServer::ConfigureOTA(String password) {
 	ArduinoOTA.onStart([]() {
 		DBG_OUTPUT_PORT.println("StartOTA \n");
 	});
-	ArduinoOTA.onEnd([]() {
-		SPIFFS.end();
+	ArduinoOTA.onEnd(std::bind([](FS *fs) {
+		fs->end();
 		DBG_OUTPUT_PORT.println("\nEnd OTA\n");
-	});
+	}, _fs));
 	ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
 		DBG_OUTPUT_PORT.printf("OTA Progress: %u%%\n", (progress / (total / 100)));
 	});
@@ -519,32 +519,36 @@ void AsyncFSWebServer::ConfigureOTA(String password) {
 	ArduinoOTA.begin();
 }
 
+void AsyncFSWebServer::onWiFiGotIp(WiFiEventStationModeGotIP data) {
+	if (CONNECTION_LED >= 0) {
+		digitalWrite(CONNECTION_LED, LOW); // Turn LED on
+	}
+	//DBG_OUTPUT_PORT.printf("Led %s on\n", CONNECTION_LED);
+	//turnLedOn();
+	wifiDisconnectedSince = 0;
+}
+
+void AsyncFSWebServer::onWiFiDisconnected(WiFiEventStationModeDisconnected data) {
+#ifdef DEBUG_GLOBALH
+	DBG_OUTPUT_PORT.println("case STA_DISCONNECTED");
+#endif // DEBUG_GLOBALH
+	if (CONNECTION_LED >= 0) {
+		digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
+	}
+	//DBG_OUTPUT_PORT.printf("Led %s off\n", CONNECTION_LED);
+	//flashLED(config.connectionLed, 2, 100);
+	if (wifiDisconnectedSince == 0) {
+		wifiDisconnectedSince = millis();
+	}
+#ifdef DEBUG
+	DBG_OUTPUT_PORT.printf("Disconnected for %d seconds\n", (int)((millis() - wifiDisconnectedSince) / 1000));
+#endif // DEBUG
+}
+
+/*
 void WiFiEvent(WiFiEvent_t event) {
 	static long wifiDisconnectedSince = 0;
 
-	/*String eventStr;
-	switch (event) {
-	case WIFI_EVENT_STAMODE_CONNECTED:
-	eventStr = "STAMODE_CONNECTED"; break;
-	case WIFI_EVENT_STAMODE_DISCONNECTED:
-	eventStr = "STAMODE_DISCONNECTED"; break;
-	case WIFI_EVENT_STAMODE_AUTHMODE_CHANGE:
-	eventStr = "STAMODE_AUTHMODE_CHANGE"; break;
-	case WIFI_EVENT_STAMODE_GOT_IP:
-	eventStr = "STAMODE_GOT_IP"; break;
-	case WIFI_EVENT_STAMODE_DHCP_TIMEOUT:
-	eventStr = "STAMODE_DHCP_TIMEOUT"; break;
-	case WIFI_EVENT_SOFTAPMODE_STACONNECTED:
-	eventStr = "SOFTAPMODE_STACONNECTED"; break;
-	case WIFI_EVENT_SOFTAPMODE_STADISCONNECTED:
-	eventStr = "SOFTAPMODE_STADISCONNECTED"; break;
-	case WIFI_EVENT_SOFTAPMODE_PROBEREQRECVED:
-	eventStr = "SOFTAPMODE_PROBEREQRECVED"; break;
-	case WIFI_EVENT_MAX:
-	eventStr = "MAX_EVENTS"; break;
-	}
-	DBG_OUTPUT_PORT.printf("%s: %s\n",__PRETTY_FUNCTION__,eventStr.c_str());
-	DBG_OUTPUT_PORT.printf("Current WiFi status: %d\n", currentWifiStatus);*/
 	switch (event) {
 	case WIFI_EVENT_STAMODE_GOT_IP:
 		//DBG_OUTPUT_PORT.println(event);
@@ -572,9 +576,11 @@ void WiFiEvent(WiFiEvent_t event) {
 		DBG_OUTPUT_PORT.printf("Disconnected for %d seconds\n", (int)((millis() - wifiDisconnectedSince) / 1000));
 #endif // DEBUG
 	}
-}
+}*/
 
 void AsyncFSWebServer::handleFileList(AsyncWebServerRequest *request) {
+	//if (!checkAuth(request))
+		//return request->requestAuthentication();
 	if (!request->hasArg("dir")) { request->send(500, "text/plain", "BAD ARGS"); return; }
 
 	String path = request->arg("dir");
@@ -626,7 +632,15 @@ String getContentType(String filename, AsyncWebServerRequest *request) {
 	return "text/plain";
 }
 
-bool AsyncFSWebServer::handleFileRead(String path, AsyncWebServerRequest *request) {
+/*
+void AsyncFSWebServer::handleFileRead_edit_html(AsyncWebServerRequest *request) {
+	if (!checkAuth(request))
+		return request->requestAuthentication();
+	handleFileRead(request, "/edit.html");
+}
+*/
+
+bool AsyncFSWebServer::handleFileRead(AsyncWebServerRequest *request, String path) {
 #ifdef DEBUG_WEBSERVER
 	DBG_OUTPUT_PORT.println("handleFileRead: " + path);
 #endif // DEBUG_WEBSERVER
@@ -663,119 +677,808 @@ bool AsyncFSWebServer::handleFileRead(String path, AsyncWebServerRequest *reques
 	return false;
 }
 
+void AsyncFSWebServer::handleFileCreate(AsyncWebServerRequest *request) {
+	if (!checkAuth(request))
+		return request->requestAuthentication();
+	if (request->args() == 0)
+		return request->send(500, "text/plain", "BAD ARGS");
+	String path = request->arg(0);
+#ifdef DEBUG_WEBSERVER
+	DBG_OUTPUT_PORT.println("handleFileCreate: " + path);
+#endif // DEBUG_WEBSERVER
+	if (path == "/")
+		return request->send(500, "text/plain", "BAD PATH");
+	if (_fs->exists(path))
+		return request->send(500, "text/plain", "FILE EXISTS");
+	File file = _fs->open(path, "w");
+	if (file)
+		file.close();
+	else
+		return request->send(500, "text/plain", "CREATE FAILED");
+	request->send(200, "text/plain", "");
+	path = String(); // Remove? Useless statement?
+}
+
+void AsyncFSWebServer::handleFileDelete(AsyncWebServerRequest *request) {
+	if (!checkAuth(request))
+		return request->requestAuthentication();
+	if (request->args() == 0) return request->send(500, "text/plain", "BAD ARGS");
+	String path = request->arg(0);
+#ifdef DEBUG_WEBSERVER
+	DBG_OUTPUT_PORT.println("handleFileDelete: " + path);
+#endif // DEBUG_WEBSERVER
+	if (path == "/")
+		return request->send(500, "text/plain", "BAD PATH");
+	if (!_fs->exists(path))
+		return request->send(404, "text/plain", "FileNotFound");
+	_fs->remove(path);
+	request->send(200, "text/plain", "");
+	path = String(); // Remove? Useless statement?
+}
+
+void AsyncFSWebServer::handleFileUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+	File fsUploadFile;
+	
+	//if (request->url() != "/edit") return;
+	if (!index) { // Start
+#ifdef DEBUG_WEBSERVER
+		DBG_OUTPUT_PORT.printf("handleFileUpload Name: %s\n", filename.c_str());
+#endif // DEBUG_WEBSERVER
+		if (!filename.startsWith("/")) filename = "/" + filename;
+		File fsUploadFile = _fs->open(filename, "w");
+
+	}
+	// Continue
+	if (fsUploadFile) {
+		if (fsUploadFile.write(data, len) != len) {
+			DBG_OUTPUT_PORT.println("Write error during upload");
+		}
+	}
+	/*for (size_t i = 0; i < len; i++) {
+	if (fsUploadFile)
+	fsUploadFile.write(data[i]);
+	}*/
+	if (final) { // End
+		if (fsUploadFile)
+			fsUploadFile.close();
+#ifdef DEBUG_WEBSERVER
+		DBG_OUTPUT_PORT.printf("handleFileUpload Size: %u\n", len);
+#endif // DEBUG_WEBSERVER
+
+	}
+}
+
+void AsyncFSWebServer::send_general_configuration_values_html(AsyncWebServerRequest *request)
+{
+	String values = "";
+	values += "devicename|" + (String)_config.deviceName + "|input\n";
+	request->send(200, "text/plain", values);
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+}
+
+void AsyncFSWebServer::send_network_configuration_values_html(AsyncWebServerRequest *request)
+{
+
+	String values = "";
+
+	values += "ssid|" + (String)_config.ssid + "|input\n";
+	values += "password|" + (String)_config.password + "|input\n";
+	values += "ip_0|" + (String)_config.ip[0] + "|input\n";
+	values += "ip_1|" + (String)_config.ip[1] + "|input\n";
+	values += "ip_2|" + (String)_config.ip[2] + "|input\n";
+	values += "ip_3|" + (String)_config.ip[3] + "|input\n";
+	values += "nm_0|" + (String)_config.netmask[0] + "|input\n";
+	values += "nm_1|" + (String)_config.netmask[1] + "|input\n";
+	values += "nm_2|" + (String)_config.netmask[2] + "|input\n";
+	values += "nm_3|" + (String)_config.netmask[3] + "|input\n";
+	values += "gw_0|" + (String)_config.gateway[0] + "|input\n";
+	values += "gw_1|" + (String)_config.gateway[1] + "|input\n";
+	values += "gw_2|" + (String)_config.gateway[2] + "|input\n";
+	values += "gw_3|" + (String)_config.gateway[3] + "|input\n";
+	values += "dns_0|" + (String)_config.dns[0] + "|input\n";
+	values += "dns_1|" + (String)_config.dns[1] + "|input\n";
+	values += "dns_2|" + (String)_config.dns[2] + "|input\n";
+	values += "dns_3|" + (String)_config.dns[3] + "|input\n";
+	values += "dhcp|" + (String)(_config.dhcp ? "checked" : "") + "|chk\n";
+
+	request->send(200, "text/plain", values);
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+}
+
+void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *request)
+{
+
+	String state = "N/A";
+	String Networks = "";
+	if (WiFi.status() == 0) state = "Idle";
+	else if (WiFi.status() == 1) state = "NO SSID AVAILBLE";
+	else if (WiFi.status() == 2) state = "SCAN COMPLETED";
+	else if (WiFi.status() == 3) state = "CONNECTED";
+	else if (WiFi.status() == 4) state = "CONNECT FAILED";
+	else if (WiFi.status() == 5) state = "CONNECTION LOST";
+	else if (WiFi.status() == 6) state = "DISCONNECTED";
+
+
+
+	int n = WiFi.scanNetworks();
+
+	if (n == 0)
+	{
+		Networks = "<font color='#FF0000'>No networks found!</font>";
+	}
+	else
+	{
+
+
+		Networks = "Found " + String(n) + " Networks<br>";
+		Networks += "<table border='0' cellspacing='0' cellpadding='3'>";
+		Networks += "<tr bgcolor='#DDDDDD' ><td><strong>Name</strong></td><td><strong>Quality</strong></td><td><strong>Enc</strong></td><tr>";
+		for (int i = 0; i < n; ++i)
+		{
+			int quality = 0;
+			if (WiFi.RSSI(i) <= -100)
+			{
+				quality = 0;
+			}
+			else if (WiFi.RSSI(i) >= -50)
+			{
+				quality = 100;
+			}
+			else
+			{
+				quality = 2 * (WiFi.RSSI(i) + 100);
+			}
+
+
+			Networks += "<tr><td><a href='javascript:selssid(\"" + String(WiFi.SSID(i)) + "\")'>" + String(WiFi.SSID(i)) + "</a></td><td>" + String(quality) + "%</td><td>" + String((WiFi.encryptionType(i) == ENC_TYPE_NONE) ? " " : "*") + "</td></tr>";
+		}
+		Networks += "</table>";
+	}
+
+	String values = "";
+	values += "connectionstate|" + state + "|div\n";
+	values += "networks|" + Networks + "|div\n";
+	request->send(200, "text/plain", values);
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+
+}
+
+void AsyncFSWebServer::send_information_values_html(AsyncWebServerRequest *request)
+{
+
+	String values = "";
+
+	values += "x_ssid|" + (String)WiFi.SSID() + "|div\n";
+	values += "x_ip|" + (String)WiFi.localIP()[0] + "." + (String)WiFi.localIP()[1] + "." + (String)WiFi.localIP()[2] + "." + (String)WiFi.localIP()[3] + "|div\n";
+	values += "x_gateway|" + (String)WiFi.gatewayIP()[0] + "." + (String)WiFi.gatewayIP()[1] + "." + (String)WiFi.gatewayIP()[2] + "." + (String)WiFi.gatewayIP()[3] + "|div\n";
+	values += "x_netmask|" + (String)WiFi.subnetMask()[0] + "." + (String)WiFi.subnetMask()[1] + "." + (String)WiFi.subnetMask()[2] + "." + (String)WiFi.subnetMask()[3] + "|div\n";
+	values += "x_mac|" + getMacAddress() + "|div\n";
+	values += "x_dns|" + (String)WiFi.dnsIP()[0] + "." + (String)WiFi.dnsIP()[1] + "." + (String)WiFi.dnsIP()[2] + "." + (String)WiFi.dnsIP()[3] + "|div\n";
+	values += "x_ntp_sync|" + NTP.getTimeDateString(NTP.getLastNTPSync()) + "|div\n";
+	values += "x_ntp_time|" + NTP.getTimeStr() + "|div\n";
+	values += "x_ntp_date|" + NTP.getDateStr() + "|div\n";
+
+	request->send(200, "text/plain", values);
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+
+}
+
+String AsyncFSWebServer::getMacAddress()
+{
+	uint8_t mac[6];
+	char macStr[18] = { 0 };
+	WiFi.macAddress(mac);
+	sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+	return  String(macStr);
+}
+
+void AsyncFSWebServer::send_NTP_configuration_values_html(AsyncWebServerRequest *request)
+{
+
+	String values = "";
+	values += "ntpserver|" + (String)_config.ntpServerName + "|input\n";
+	values += "update|" + (String)_config.updateNTPTimeEvery + "|input\n";
+	values += "tz|" + (String)_config.timezone + "|input\n";
+	values += "dst|" + (String)(_config.daylight ? "checked" : "") + "|chk\n";
+	request->send(200, "text/plain", values);
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+
+}
+
+// convert a single hex digit character to its integer value (from https://code.google.com/p/avr-netino/)
+unsigned char AsyncFSWebServer::h2int(char c)
+{
+	if (c >= '0' && c <= '9') {
+		return((unsigned char)c - '0');
+	}
+	if (c >= 'a' && c <= 'f') {
+		return((unsigned char)c - 'a' + 10);
+	}
+	if (c >= 'A' && c <= 'F') {
+		return((unsigned char)c - 'A' + 10);
+	}
+	return(0);
+}
+
+String AsyncFSWebServer::urldecode(String input) // (based on https://code.google.com/p/avr-netino/)
+{
+	char c;
+	String ret = "";
+
+	for (byte t = 0; t<input.length(); t++)
+	{
+		c = input[t];
+		if (c == '+') c = ' ';
+		if (c == '%') {
+
+
+			t++;
+			c = input[t];
+			t++;
+			c = (h2int(c) << 4) | h2int(input[t]);
+		}
+
+		ret.concat(c);
+	}
+	return ret;
+
+}
+
+//
+// Check the Values is between 0-255
+//
+boolean AsyncFSWebServer::checkRange(String Value)
+{
+	if (Value.toInt() < 0 || Value.toInt() > 255)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *request)
+{
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+
+	if (!checkAuth(request))
+		return request->requestAuthentication();
+
+	if (request->args() > 0)  // Save Settings
+	{
+		//String temp = "";
+		bool oldDHCP = _config.dhcp; // Save status to avoid general.html cleares it
+		_config.dhcp = false;
+		for (uint8_t i = 0; i < request->args(); i++) {
+#ifdef DEBUG_DYNAMICDATA
+			DBG_OUTPUT_PORT.printf("Arg %d: %s\n", i, request->arg(i).c_str());
+#endif // DEBUG_DYNAMICDATA
+			if (request->argName(i) == "devicename") {
+				_config.deviceName = urldecode(request->arg(i));
+				_config.dhcp = oldDHCP;
+				continue;
+			}
+			if (request->argName(i) == "ssid") { _config.ssid = urldecode(request->arg(i));	continue; }
+			if (request->argName(i) == "password") { _config.password = urldecode(request->arg(i)); continue; }
+			if (request->argName(i) == "ip_0") { if (checkRange(request->arg(i))) 	_config.ip[0] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "ip_1") { if (checkRange(request->arg(i))) 	_config.ip[1] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "ip_2") { if (checkRange(request->arg(i))) 	_config.ip[2] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "ip_3") { if (checkRange(request->arg(i))) 	_config.ip[3] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "nm_0") { if (checkRange(request->arg(i))) 	_config.netmask[0] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "nm_1") { if (checkRange(request->arg(i))) 	_config.netmask[1] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "nm_2") { if (checkRange(request->arg(i))) 	_config.netmask[2] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "nm_3") { if (checkRange(request->arg(i))) 	_config.netmask[3] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "gw_0") { if (checkRange(request->arg(i))) 	_config.gateway[0] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "gw_1") { if (checkRange(request->arg(i))) 	_config.gateway[1] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "gw_2") { if (checkRange(request->arg(i))) 	_config.gateway[2] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "gw_3") { if (checkRange(request->arg(i))) 	_config.gateway[3] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "dns_0") { if (checkRange(request->arg(i))) 	_config.dns[0] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "dns_1") { if (checkRange(request->arg(i))) 	_config.dns[1] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "dns_2") { if (checkRange(request->arg(i))) 	_config.dns[2] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "dns_3") { if (checkRange(request->arg(i))) 	_config.dns[3] = request->arg(i).toInt(); continue; }
+			if (request->argName(i) == "dhcp") {									_config.dhcp = true; continue; }
+		}
+		request->send(200, "text/html", Page_WaitAndReload);
+		save_config();
+		//yield();
+		delay(1000);
+		_fs->end();
+		ESP.restart();
+		//ConfigureWifi();
+		//AdminTimeOutCounter = 0;
+	}
+	else
+	{
+		DBG_OUTPUT_PORT.println(request->url());
+		handleFileRead(request, request->url());
+	}
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+}
+
+void AsyncFSWebServer::send_general_configuration_html(AsyncWebServerRequest *request)
+{
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+
+	if (!checkAuth(request))
+		return request->requestAuthentication();
+
+	if (request->args() > 0)  // Save Settings
+	{
+		for (uint8_t i = 0; i < request->args(); i++) {
+#ifdef DEBUG_DYNAMICDATA
+			DBG_OUTPUT_PORT.printf("Arg %d: %s\n", i, request->arg(i).c_str());
+#endif // DEBUG_DYNAMICDATA
+			if (request->argName(i) == "devicename") {
+				_config.deviceName = urldecode(request->arg(i));
+				continue;
+			}
+		}
+		request->send(200, "text/html", Page_Restart);
+		save_config();
+		_fs->end();
+		ESP.restart();
+		//ConfigureWifi();
+		//AdminTimeOutCounter = 0;
+	}
+	else
+	{
+		handleFileRead(request, request->url());
+	}
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+}
+
+void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *request)
+{
+
+	if (!checkAuth(request))
+		return request->requestAuthentication();
+
+	if (request->args() > 0)  // Save Settings
+	{
+		_config.daylight = false;
+		//String temp = "";
+		for (uint8_t i = 0; i < request->args(); i++) {
+			if (request->argName(i) == "ntpserver") {
+				_config.ntpServerName = urldecode(request->arg(i));
+				NTP.setNtpServerName(_config.ntpServerName);
+				continue;
+			}
+			if (request->argName(i) == "update") {
+				_config.updateNTPTimeEvery = request->arg(i).toInt();
+				NTP.setInterval(_config.updateNTPTimeEvery * 60);
+				continue;
+			}
+			if (request->argName(i) == "tz") {
+				_config.timezone = request->arg(i).toInt();
+				NTP.setTimeZone(_config.timezone / 10);
+				continue;
+			}
+			if (request->argName(i) == "dst") {
+				_config.daylight = true;
+#ifdef DEBUG_DYNAMICDATA
+				DBG_OUTPUT_PORT.printf("Daylight Saving: %d\n", config.daylight);
+#endif // DEBUG_DYNAMICDATA
+				continue;
+			}
+		}
+
+		NTP.setDayLight(_config.daylight);
+		save_config();
+		//firstStart = true;
+
+		setTime(NTP.getTime()); //set time
+	}
+	handleFileRead(request, "/ntp.html");
+	//server.send(200, "text/html", PAGE_NTPConfiguration);
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+
+}
+
+void AsyncFSWebServer::restart_esp(AsyncWebServerRequest *request) {
+	//server.send(200, "text/html", Page_Restart);
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+	_fs->end(); // SPIFFS.end();
+	delay(1000);
+	ESP.restart();
+}
+
+void AsyncFSWebServer::send_wwwauth_configuration_values_html(AsyncWebServerRequest *request) {
+	String values = "";
+
+	values += "wwwauth|" + (String)(_httpAuth.auth ? "checked" : "") + "|chk\n";
+	values += "wwwuser|" + (String)_httpAuth.wwwUsername + "|input\n";
+	values += "wwwpass|" + (String)_httpAuth.wwwPassword + "|input\n";
+
+	request->send(200, "text/plain", values);
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+}
+
+void AsyncFSWebServer::send_wwwauth_configuration_html(AsyncWebServerRequest *request)
+{
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.printf("%s %d\n", __FUNCTION__, request->args());
+#endif // DEBUG_DYNAMICDATA
+	if (request->args() > 0)  // Save Settings
+	{
+		_httpAuth.auth = false;
+		//String temp = "";
+		for (uint8_t i = 0; i < request->args(); i++) {
+			if (request->argName(i) == "wwwuser") {
+				_httpAuth.wwwUsername = urldecode(request->arg(i));
+#ifdef DEBUG_DYNAMICDATA
+				DBG_OUTPUT_PORT.printf("User: %s\n", httpAuth.wwwUsername.c_str());
+#endif // DEBUG_DYNAMICDATA
+				continue;
+			}
+			if (request->argName(i) == "wwwpass") {
+				_httpAuth.wwwPassword = urldecode(request->arg(i));
+#ifdef DEBUG_DYNAMICDATA
+				DBG_OUTPUT_PORT.printf("Pass: %s\n", httpAuth.wwwPassword.c_str());
+#endif // DEBUG_DYNAMICDATA
+				continue;
+			}
+			if (request->argName(i) == "wwwauth") {
+				_httpAuth.auth = true;
+#ifdef DEBUG_DYNAMICDATA
+				DBG_OUTPUT_PORT.printf("HTTP Auth enabled\n");
+#endif // DEBUG_DYNAMICDATA
+				continue;
+			}
+		}
+
+		saveHTTPAuth();
+	}
+	handleFileRead(request, "/system.html");
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+
+}
+
+bool AsyncFSWebServer::saveHTTPAuth() {
+	//flag_config = false;
+#ifdef DEBUG
+	DBG_OUTPUT_PORT.println("Save secret");
+#endif
+	StaticJsonBuffer<256> jsonBuffer;
+	JsonObject& json = jsonBuffer.createObject();
+	json["auth"] = _httpAuth.auth;
+	json["user"] = _httpAuth.wwwUsername;
+	json["pass"] = _httpAuth.wwwPassword;
+
+	//TODO add AP data to html
+	File configFile = _fs->open(SECRET_FILE, "w");
+	if (!configFile) {
+#ifdef DEBUG
+		DBG_OUTPUT_PORT.println("Failed to open secret file for writing");
+#endif // DEBUG
+		configFile.close();
+		return false;
+	}
+
+#ifdef DEBUG
+	String temp;
+	json.prettyPrintTo(temp);
+	Serial.println(temp);
+#endif
+
+	json.printTo(configFile);
+	configFile.flush();
+	configFile.close();
+	return true;
+}
+
+void AsyncFSWebServer::send_update_firmware_values_html(AsyncWebServerRequest *request) {
+	String values = "";
+	uint32_t maxSketchSpace = (ESP.getSketchSize() - 0x1000) & 0xFFFFF000;
+	//bool updateOK = Update.begin(maxSketchSpace);
+	bool updateOK = maxSketchSpace < ESP.getFreeSketchSpace();
+	StreamString result;
+	Update.printError(result);
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.printf("--MaxSketchSpace: %d\n", maxSketchSpace);
+	DBG_OUTPUT_PORT.printf("--Update error = %s\n", result.c_str());
+#endif // DEBUG_DYNAMICDATA
+	values += "remupd|" + (String)((updateOK) ? "OK" : "ERROR") + "|div\n";
+
+	if (Update.hasError()) {
+		result.trim();
+		values += "remupdResult|" + result + "|div\n";
+	}
+	else {
+		values += "remupdResult||div\n";
+	}
+
+	request->send(200, "text/plain", values);
+#ifdef DEBUG_DYNAMICDATA
+	DBG_OUTPUT_PORT.println(__FUNCTION__);
+#endif // DEBUG_DYNAMICDATA
+}
+
+void AsyncFSWebServer::setUpdateMD5(AsyncWebServerRequest *request) {
+	_browserMD5 = "";
+#ifdef DEBUG_WEBSERVER
+	DBG_OUTPUT_PORT.printf("Arg number: %d\n", request->args());
+#endif // DEBUG_WEBSERVER
+	if (request->args() > 0)  // Read hash
+	{
+		//String temp = "";
+		for (uint8_t i = 0; i < request->args(); i++) {
+#ifdef DEBUG_WEBSERVER
+			DBG_OUTPUT_PORT.printf("Arg %s: %s\n", request->argName(i).c_str(), request->arg(i).c_str());
+#endif // DEBUG_WEBSERVER
+			if (request->argName(i) == "md5") {
+				_browserMD5 = urldecode(request->arg(i));
+				Update.setMD5(_browserMD5.c_str());
+				continue;
+			}if (request->argName(i) == "size") {
+				_updateSize = request->arg(i).toInt();
+#ifdef DEBUG_WEBSERVER
+				DBG_OUTPUT_PORT.printf("Update size: %u\n", request->arg(i).toInt());
+#endif // DEBUG_WEBSERVER
+				continue;
+			}
+		}
+		request->send(200, "text/html", "OK --> MD5: " + _browserMD5);
+	}
+
+}
+
+void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+	// handler for the file upload, get's the sketch bytes, and writes
+	// them through the Update object
+	static long totalSize = 0;
+	if (!index) { //UPLOAD_FILE_START
+		SPIFFS.end();
+		Update.runAsync(true);
+		DBG_OUTPUT_PORT.printf("Update start: %s\n", filename.c_str());
+		uint32_t maxSketchSpace = ESP.getSketchSize();
+		DBG_OUTPUT_PORT.printf("Max free scketch space: %u\n", maxSketchSpace);
+		DBG_OUTPUT_PORT.printf("New scketch size: %u\n", _updateSize);
+		if (_browserMD5 != NULL && _browserMD5 != "") {
+			Update.setMD5(_browserMD5.c_str());
+			DBG_OUTPUT_PORT.printf("Hash from client: %s\n", _browserMD5.c_str());
+		}
+		if (!Update.begin(_updateSize)) {//start with max available size
+			Update.printError(DBG_OUTPUT_PORT);
+		}
+
+	}
+
+	// Get upload file, continue if not start
+	totalSize += len;
+	DBG_OUTPUT_PORT.print(".");
+	size_t written = Update.write(data, len);
+	if (written != len) {
+		DBG_OUTPUT_PORT.printf("len = %d, written = %l, totalSize = %l\r\n", len, written, totalSize);
+		//Update.printError(DBG_OUTPUT_PORT);
+		//return;
+	}
+	if (final) {  // UPLOAD_FILE_END
+		String updateHash;
+		DBG_OUTPUT_PORT.println("Applying update...");
+		if (Update.end(true)) { //true to set the size to the current progress
+			updateHash = Update.md5String();
+			DBG_OUTPUT_PORT.printf("Upload finished. Calculated MD5: %s\n", updateHash.c_str());
+			DBG_OUTPUT_PORT.printf("Update Success: %u\nRebooting...\n", request->contentLength());
+		}
+		else {
+			updateHash = Update.md5String();
+			DBG_OUTPUT_PORT.printf("Upload failed. Calculated MD5: %s\n", updateHash.c_str());
+			Update.printError(DBG_OUTPUT_PORT);
+		}
+	}
+
+	//delay(2);
+}
+
+void AsyncFSWebServer::webSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length) {
+
+	if (type == WS_EVT_DISCONNECT) {
+#ifdef DEBUG_DYNAMICDATA
+		DBG_OUTPUT_PORT.printf("[%u] Disconnected!\n", client->id());
+#endif // DEBUG_DYNAMICDATA
+	}
+	else if (type == WS_EVT_CONNECT) {
+#ifdef DEBUG_DYNAMICDATA
+		wsNumber = client->id();
+		IPAddress ip = client->remoteIP();
+		DBG_OUTPUT_PORT.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", client->id(), ip[0], ip[1], ip[2], ip[3], payload);
+#endif // DEBUG_DYNAMICDATA
+
+		// send message to client
+		//wsServer.sendTXT(num, "Connected");
+	}
+	else if (type == WS_EVT_DATA) {
+		AwsFrameInfo * info = (AwsFrameInfo*)arg;
+		String msg = "";
+		if (info->final && info->index == 0 && info->len == length) {
+			//the whole message is in a single frame and we got all of it's data
+			if (info->opcode == WS_TEXT) {
+				for (size_t i = 0; i < info->len; i++) {
+					msg += (char)payload[i];
+				}
+			}
+			else { // Binary
+				char buff[3];
+				for (size_t i = 0; i < info->len; i++) {
+					sprintf(buff, "%02x ", (uint8_t)payload[i]);
+					msg += buff;
+				}
+			}
+#ifdef DEBUG_DYNAMICDATA
+			DBG_OUTPUT_PORT.printf("ws[%s][%u] %s-message[%llu]: ", server->url(), client->id(), (info->opcode == WS_TEXT) ? "text" : "binary", info->len);
+			DBG_OUTPUT_PORT.printf("%s\r\n", msg.c_str());
+#endif // DEBUG_DYNAMICDATA
+		}
+		else {
+			//message is comprised of multiple frames or the frame is split into multiple packets
+			if (info->index == 0) { // Message start
+				if (info->num == 0)
+					DBG_OUTPUT_PORT.printf("ws[%s][%u] %s-message start\n", server->url(), client->id(), (info->message_opcode == WS_TEXT) ? "text" : "binary");
+				DBG_OUTPUT_PORT.printf("ws[%s][%u] frame[%u] start[%llu]\n", server->url(), client->id(), info->num, info->len);
+			}
+			// Continue message
+			DBG_OUTPUT_PORT.printf("ws[%s][%u] frame[%u] %s[%llu - %llu]: ", server->url(), client->id(), info->num, (info->message_opcode == WS_TEXT) ? "text" : "binary", info->index, info->index + length);
+
+			if (info->opcode == WS_TEXT) { // Text
+				for (size_t i = 0; i < info->len; i++) {
+					msg += (char)payload[i];
+				}
+			}
+			else { // Binary
+				char buff[3];
+				for (size_t i = 0; i < info->len; i++) {
+					sprintf(buff, "%02x ", (uint8_t)payload[i]);
+					msg += buff;
+				}
+			}
+			DBG_OUTPUT_PORT.printf("%s\r\n", msg.c_str());
+
+			if ((info->index + length) == info->len) { // Message end
+				DBG_OUTPUT_PORT.printf("ws[%s][%u] frame[%u] end[%llu]\n", server->url(), client->id(), info->num, info->len);
+				if (info->final) {
+					DBG_OUTPUT_PORT.printf("ws[%s][%u] %s-message end\n", server->url(), client->id(), (info->message_opcode == WS_TEXT) ? "text" : "binary");
+					if (info->message_opcode == WS_TEXT)
+						client->text("I got your text message");
+					else
+						client->binary("I got your binary message");
+				}
+			}
+		}
+		// send message to client
+		//client->text("message here");
+
+		// send data to all connected clients
+		//client->message();
+		// webSocket.broadcastTXT("message here");
+
+	}
+
+}
+
+
 void AsyncFSWebServer::serverInit() {
 	//SERVER INIT
 	//list directory
-	auto handleFilelist = std::bind(&AsyncFSWebServer::handleFileList, this, *request);
-
-	on("/list", HTTP_GET, handleFilelist);
+	on("/list", HTTP_GET, std::bind(
+		[](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
+			if (!self->checkAuth(request))
+				return request->requestAuthentication();
+			self->handleFileList(request);
+		}, 
+		this, _1));
+		
+		//std::bind(&AsyncFSWebServer::handleFileList, this, _1));
 	//load editor
-	on("/edit", HTTP_GET, [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
-			return request->requestAuthentication();
-		if (!ESPHTTPServer.handleFileRead("/edit.html", request))
-			request->send(404, "text/plain", "FileNotFound");
-	});
+	on("/edit", HTTP_GET, std::bind(&AsyncFSWebServer::handleFileRead, this, _1, "/index.html")); // Have to check this
 	//create file
-	on("/edit", HTTP_PUT, [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
-			return request->requestAuthentication();
-		handleFileCreate(request);
-	});
+	on("/edit", HTTP_PUT, std::bind(&AsyncFSWebServer::handleFileCreate, this, _1));
 	//delete file
-	on("/edit", HTTP_DELETE, [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
-			return request->requestAuthentication();
-		handleFileDelete(request);
-	});
+	on("/edit", HTTP_DELETE, std::bind(&AsyncFSWebServer::handleFileDelete, this, _1));
 	//first callback is called after the request has ended with all parsed arguments
 	//second callback handles file uploads at that location
-	on("/edit", HTTP_POST, [](AsyncWebServerRequest *request) { request->send(200, "text/plain", ""); }, handleFileUpload);
-	on("/admin/generalvalues", HTTP_GET, [](AsyncWebServerRequest *request) { send_general_configuration_values_html(request); });
-	on("/admin/values", [](AsyncWebServerRequest *request) { send_network_configuration_values_html(request); });
-	on("/admin/connectionstate", [](AsyncWebServerRequest *request) { send_connection_state_values_html(request); });
-	on("/admin/infovalues", [](AsyncWebServerRequest *request) { send_information_values_html(request); });
-	on("/admin/ntpvalues", [](AsyncWebServerRequest *request) { send_NTP_configuration_values_html(request); });
-	on("/config.html", [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
-			return request->requestAuthentication();
-		send_network_configuration_html(request);
-	});
-	on("/general.html", [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
-			return request->requestAuthentication();
-		send_general_configuration_html(request);
-	});
-	on("/ntp.html", [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
-			return request->requestAuthentication();
-		send_NTP_configuration_html(request);
-	});
+	on("/edit", HTTP_POST, [](AsyncWebServerRequest *request) { request->send(200, "text/plain", ""); }, std::bind(&AsyncFSWebServer::handleFileUpload, this, _1, _2, _3, _4, _5, _6));
+	on("/admin/generalvalues", HTTP_GET, std::bind(&AsyncFSWebServer::send_general_configuration_values_html, this, _1));
+	on("/admin/values", std::bind(&AsyncFSWebServer::send_network_configuration_values_html, this, _1));
+	on("/admin/connectionstate", std::bind(&AsyncFSWebServer::send_connection_state_values_html, this, _1));
+	on("/admin/infovalues", std::bind(&AsyncFSWebServer::send_information_values_html, this, _1));
+	on("/admin/ntpvalues", std::bind(&AsyncFSWebServer::send_NTP_configuration_values_html, this, _1));
+	on("/config.html", std::bind(&AsyncFSWebServer::send_network_configuration_html, this, _1));
+	on("/general.html", std::bind(&AsyncFSWebServer::send_general_configuration_html, this, _1));
+	on("/ntp.html", std::bind(&AsyncFSWebServer::send_NTP_configuration_html, this, _1));
 	//server.on("/admin/devicename", send_devicename_value_html);
-	on("/admin/restart", [](AsyncWebServerRequest *request) {
+	on("/admin/restart", std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
 		DBG_OUTPUT_PORT.println(request->url());
-		if (!ESPHTTPServer.checkAuth(request))
+		if (!self->checkAuth(request))
 			return request->requestAuthentication();
-		restart_esp(request);
-	});
-	on("/admin/wwwauth", [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
+		self->restart_esp(request);
+	}, this, _1));
+	on("/admin/wwwauth", std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
+		if (!self->checkAuth(request))
 			return request->requestAuthentication();
-		send_wwwauth_configuration_values_html(request);
-	});
-	on("/admin", HTTP_GET, [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
+		self->send_wwwauth_configuration_values_html(request);
+	}, this, _1));
+	on("/admin", HTTP_GET, std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
+		if (!self->checkAuth(request))
 			return request->requestAuthentication();
-		if (!handleFileRead("/admin.html", request))
+		if (!self->handleFileRead(request, "/admin.html"))
 			request->send(404, "text/plain", "FileNotFound");
-	});
-	on("/system.html", [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
+	}, this, _1));
+	on("/system.html", std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
+		if (!self->checkAuth(request))
 			return request->requestAuthentication();
-		send_wwwauth_configuration_html(request);
-	});
-	on("/update/updatepossible", [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
+		self->send_wwwauth_configuration_html(request);
+	}, this, _1));
+	on("/update/updatepossible", std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
+		if (!self->checkAuth(request))
 			return request->requestAuthentication();
-		send_update_firmware_values_html(request);
-	});
-	on("/setmd5", [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
+		self->send_update_firmware_values_html(request);
+	}, this, _1));
+	on("/setmd5", std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
+		if (!self->checkAuth(request))
 			return request->requestAuthentication();
 		//DBG_OUTPUT_PORT.println("md5?");
-		setUpdateMD5(request);
-	});
-	on("/update", HTTP_GET, [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
+		self->setUpdateMD5(request);
+	}, this, _1));
+	on("/update", HTTP_GET, std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
+		if (!self->checkAuth(request))
 			return request->requestAuthentication();
-		if (!handleFileRead("/update.html", request))
+		if (!self->handleFileRead(request, "/update.html"))
 			request->send(404, "text/plain", "FileNotFound");
-	});
-	on("/update", HTTP_POST, [](AsyncWebServerRequest *request) {
-		if (!ESPHTTPServer.checkAuth(request))
+	}, this, _1));
+	on("/update", HTTP_POST, std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
+		if (!self->checkAuth(request))
 			return request->requestAuthentication();
 		AsyncWebServerResponse *response = request->beginResponse(200, "text/html", (Update.hasError()) ? "FAIL" : "<META http-equiv=\"refresh\" content=\"15;URL=/update\">Update correct. Restarting...");
 		response->addHeader("Connection", "close");
 		response->addHeader("Access-Control-Allow-Origin", "*");
 		request->send(response);
+		self->_fs->end();
 		ESP.restart();
-	}, updateFirmware);
+	}, this, _1), std::bind(&AsyncFSWebServer::updateFirmware, this, _1, _2, _3, _4, _5, _6));
 
-	_ws->onEvent(webSocketEvent);
+	_ws->onEvent(std::bind(&AsyncFSWebServer::webSocketEvent, this, _1, _2, _3, _4, _5, _6));
 	addHandler(_ws);
 
 	//called when the url is not defined here
 	//use it to load content from SPIFFS
-	onNotFound([](AsyncWebServerRequest *request) {
+	onNotFound(std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
 		DBG_OUTPUT_PORT.printf("Not found: %s\r\n", request->url().c_str());
-		if (!ESPHTTPServer.checkAuth(request))
+		if (!self->checkAuth(request))
 			return request->requestAuthentication();
 		AsyncWebServerResponse *response = request->beginResponse(200);
 		response->addHeader("Connection", "close");
 		response->addHeader("Access-Control-Allow-Origin", "*");
-		if (!handleFileRead(request->url(), request))
+		if (!self->handleFileRead(request, request->url()))
 			request->send(404, "text/plain", "FileNotFound");
-	});
+	}, this, _1));
 
 #define HIDE_SECRET
 #ifdef HIDE_SECRET
@@ -810,7 +1513,7 @@ void AsyncFSWebServer::serverInit() {
 		request->send(200, "text/json", json);
 		json = String();
 	});
-	server.begin();
+	//server.begin(); --> Not here
 	//httpUpdater.setup(&server,httpAuth.wwwUsername,httpAuth.wwwPassword);
 #ifdef DEBUG_WEBSERVER
 	DBG_OUTPUT_PORT.println("HTTP server started");
