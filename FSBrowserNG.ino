@@ -1,18 +1,16 @@
-
-#
 #include <ESP8266WiFi.h>
+#include <FS.h>
 #include <WiFiClient.h>
 #include <TimeLib.h>
 #include <NtpClientLib.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ESP8266mDNS.h>
-#include <FS.h>
 #include <Ticker.h>
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 #include "FSWebServerLib.h"
-
+#include <Hash.h>
 
 void setup()
 {
