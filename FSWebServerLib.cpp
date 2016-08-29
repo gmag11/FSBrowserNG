@@ -63,6 +63,7 @@ void AsyncFSWebServer::sendTimeData() {
 	str = "";
 	str = "B" + NTP.getTimeDateString(NTP.getLastBootTime());
 	_ws.textAll(str);
+	str = "";
 	//DEBUGLOG(__PRETTY_FUNCTION__);
 	//DEBUGLOG("\r\n")
 }
@@ -485,7 +486,7 @@ void AsyncFSWebServer::ConfigureOTA(String password) {
 		else if (error == OTA_RECEIVE_ERROR) DEBUGLOG("Receive Failed\r\n");
 		else if (error == OTA_END_ERROR) DEBUGLOG("End Failed\r\n");
 	});
-	DEBUGLOG("\r\nOTA Ready");
+	DEBUGLOG("\r\nOTA Ready\r\n");
 #endif // DEBUG
 	ArduinoOTA.begin();
 }
@@ -510,7 +511,7 @@ void AsyncFSWebServer::onWiFiDisconnected(WiFiEventStationModeDisconnected data)
 	if (wifiDisconnectedSince == 0) {
 		wifiDisconnectedSince = millis();
 	}
-	DEBUGLOG("Disconnected for %d seconds\n", (int)((millis() - wifiDisconnectedSince) / 1000));
+	DEBUGLOG("\r\nDisconnected for %d seconds\r\n", (int)((millis() - wifiDisconnectedSince) / 1000));
 }
 
 /*
@@ -803,6 +804,8 @@ void AsyncFSWebServer::send_information_values_html(AsyncWebServerRequest *reque
 	values += "x_last_boot|" + NTP.getTimeDateString(NTP.getLastBootTime()) + "|div\n";
 
 	request->send(200, "text/plain", values);
+	//delete &values;
+	values = "";
 	DEBUGLOG(__FUNCTION__);
 	DEBUGLOG("\r\n");
 
@@ -1425,6 +1428,7 @@ void AsyncFSWebServer::serverInit() {
 		response->addHeader("Access-Control-Allow-Origin", "*");
 		if (!this->handleFileRead(request->url(), request))
 			request->send(404, "text/plain", "FileNotFound");
+		delete response; // Free up memory!
 	});
 
 
