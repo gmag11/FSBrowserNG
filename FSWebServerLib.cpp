@@ -56,6 +56,8 @@ void AsyncFSWebServer::sendTimeData() {
 	_ws.textAll(sync);
 	String uptime = "U" + NTP.getUptimeString();
 	_ws.textAll(uptime);
+	String uptime = "U" + NTP.getUptimeString();
+	_ws.textAll(uptime);
 	//DEBUGLOG(__PRETTY_FUNCTION__);
 	//DEBUGLOG("\r\n")
 }
