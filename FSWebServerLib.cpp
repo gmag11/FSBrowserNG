@@ -48,16 +48,21 @@ void AsyncFSWebServer::s_secondTick(void* arg) {
 }
 
 void AsyncFSWebServer::sendTimeData() {
-	String time = "T" + NTP.getTimeStr();
-	_ws.textAll(time);
-	String date = "D" + NTP.getDateStr();
-	_ws.textAll(date);
-	String sync = "S" + NTP.getTimeDateString(NTP.getLastNTPSync());
-	_ws.textAll(sync);
-	String uptime = "U" + NTP.getUptimeString();
-	_ws.textAll(uptime);
-	String uptime = "U" + NTP.getUptimeString();
-	_ws.textAll(uptime);
+	String str = "";
+	str = "T" + NTP.getTimeStr();
+	_ws.textAll(str);
+	str = "";
+	str = "D" + NTP.getDateStr();
+	_ws.textAll(str);
+	str = "";
+	str = "S" + NTP.getTimeDateString(NTP.getLastNTPSync());
+	_ws.textAll(str);
+	str = "";
+	str = "U" + NTP.getUptimeString();
+	_ws.textAll(str);
+	str = "";
+	str = "B" + NTP.getTimeDateString(NTP.getLastBootTime());
+	_ws.textAll(str);
 	//DEBUGLOG(__PRETTY_FUNCTION__);
 	//DEBUGLOG("\r\n")
 }
@@ -661,7 +666,11 @@ void AsyncFSWebServer::handleFileUpload(AsyncWebServerRequest *request, String f
 		DEBUGLOG("handleFileUpload Name: %s\r\n", filename.c_str());
 		if (!filename.startsWith("/")) filename = "/" + filename;
 		File fsUploadFile = _fs->open(filename, "w");
-
+		if (fsUploadFile) {
+			if (fsUploadFile.write(data, len) != len) {
+				DEBUGLOG("Write error during upload\r\n");
+			}
+		}
 	}
 	// Continue
 	if (fsUploadFile) {
@@ -674,8 +683,10 @@ void AsyncFSWebServer::handleFileUpload(AsyncWebServerRequest *request, String f
 	fsUploadFile.write(data[i]);
 	}*/
 	if (final) { // End
-		if (fsUploadFile)
+		if (fsUploadFile) {
+			
 			fsUploadFile.close();
+		}
 		DEBUGLOG("handleFileUpload Size: %u\n", len);
 	}
 }
@@ -792,6 +803,8 @@ void AsyncFSWebServer::send_information_values_html(AsyncWebServerRequest *reque
 	values += "x_ntp_sync|" + NTP.getTimeDateString(NTP.getLastNTPSync()) + "|div\n";
 	values += "x_ntp_time|" + NTP.getTimeStr() + "|div\n";
 	values += "x_ntp_date|" + NTP.getDateStr() + "|div\n";
+	values += "x_uptime|" + NTP.getUptimeString() + "|div\n";
+	values += "x_last_boot|" + NTP.getTimeDateString(NTP.getLastBootTime()) + "|div\n";
 
 	request->send(200, "text/plain", values);
 	DEBUGLOG(__FUNCTION__);
@@ -1133,7 +1146,7 @@ void AsyncFSWebServer::setUpdateMD5(AsyncWebServerRequest *request) {
 				continue;
 			}if (request->argName(i) == "size") {
 				_updateSize = request->arg(i).toInt();
-				DEBUGLOG("Update size: %l\r\n", request->arg(i).toInt());
+				DEBUGLOG("Update size: %l\r\n", _updateSize);
 				continue;
 			}
 		}

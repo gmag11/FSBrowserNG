@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <link rel="stylesheet" href="style.css" type="text/css" />
-<script src="microajax.js"></script>
+<!--script src="microajax.js"></!script>-->
 <a href="admin.html"  class="btn btn--s"><</a>&nbsp;&nbsp;<strong>Network Information</strong>
 	<hr>
 	<table border="0"  cellspacing="0" cellpadding="3" style="width:310px" >
@@ -67,9 +67,15 @@
     </td>
   </tr>
   <tr>
-    <td align="right">Update:</td>
+    <td align="right">Uptime:</td>
     <td>
-       <span id="x_update"></span>
+       <span id="x_uptime"></span>
+    </td>
+  </tr>
+  <tr>
+    <td align="right">Last boot:</td>
+    <td>
+       <span id="x_last_boot"></span>
     </td>
   </tr>
   <tr>
@@ -153,7 +159,12 @@
             if (evt.data[0] == "U") {
                 var sync;
                 sync = evt.data.substring(1);
-                document.getElementById("x_update").innerHTML = sync;
+                document.getElementById("x_uptime").innerHTML = sync;
+            };
+            if (evt.data[0] == "B") {
+                var sync;
+                sync = evt.data.substring(1);
+                document.getElementById("x_last_boot").innerHTML = sync;
             };
         };
         websocket.onerror = function (evt) {
