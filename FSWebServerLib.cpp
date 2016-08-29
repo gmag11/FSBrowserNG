@@ -90,9 +90,7 @@ void AsyncFSWebServer::begin(FS* fs)
 
 	if (AP_ENABLE_BUTTON >= 0) {
 		_apConfig.APenable = digitalRead(AP_ENABLE_BUTTON); // Read AP button
-#ifdef DEBUG
-		DBG_OUTPUT_PORT.printf("AP Enable = %d\n", _apConfig.APenable);
-#endif // DEBUG
+	DEBUGLOG("AP Enable = %d\n", _apConfig.APenable);
 	}
 	if (CONNECTION_LED >= 0) {
 		digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
@@ -106,9 +104,9 @@ void AsyncFSWebServer::begin(FS* fs)
 			String fileName = dir.fileName();
 			size_t fileSize = dir.fileSize();
 
-			DBG_OUTPUT_PORT.printf("FS File: %s, size: %s\n", fileName.c_str(), formatBytes(fileSize).c_str());
+			DEBUGLOG("FS File: %s, size: %s\n", fileName.c_str(), formatBytes(fileSize).c_str());
 		}
-		DBG_OUTPUT_PORT.printf("\n");
+		DEBUGLOG("\n");
 	}
 #endif // DEBUG
 	if (!load_config()) { // Try to load configuration from file system
@@ -137,14 +135,12 @@ void AsyncFSWebServer::begin(FS* fs)
 	else {
 		configureWifi(); // Set WiFi config
 	}
-#ifdef DEBUG
-	DBG_OUTPUT_PORT.print("Open http://");
-	DBG_OUTPUT_PORT.print(_config.deviceName);
-	DBG_OUTPUT_PORT.println(".local/edit to see the file browser");
-	DBG_OUTPUT_PORT.printf("Flash chip size: %u\n", ESP.getFlashChipRealSize());
-	DBG_OUTPUT_PORT.printf("Scketch size: %u\n", ESP.getSketchSize());
-	DBG_OUTPUT_PORT.printf("Free flash space: %u\n", ESP.getFreeSketchSpace());
-#endif
+	DEBUGLOG("Open http://");
+	DEBUGLOG(_config.deviceName.c_str());
+	DEBUGLOG(".local/edit to see the file browser");
+	DEBUGLOG("Flash chip size: %u\n", ESP.getFlashChipRealSize());
+	DEBUGLOG("Scketch size: %u\n", ESP.getSketchSize());
+	DEBUGLOG("Free flash space: %u\n", ESP.getFreeSketchSpace());
 	// NTP client setup
 	if (_config.updateNTPTimeEvery > 0) { // Enable NTP sync
 		NTP.setInterval(15, _config.updateNTPTimeEvery * 60);
@@ -154,32 +150,26 @@ void AsyncFSWebServer::begin(FS* fs)
 	_secondTk.attach(1.0f, &AsyncFSWebServer::s_secondTick, static_cast<void*>(this)); // Task to run periodic things every second
 	AsyncWebSocket ws("/ws");
 	_ws = &ws;
-	serverInit(); // Configure and start Web server
+
 	AsyncWebServer::begin();
+	serverInit(); // Configure and start Web server
+	
 	MDNS.begin(_config.deviceName.c_str()); // I've not got this to work. Need some investigation.
 	MDNS.addService("http", "tcp", 80);
 	ConfigureOTA(_httpAuth.wwwPassword.c_str());
-#ifdef DEBUG
-	DBG_OUTPUT_PORT.println("END Setup");
-#endif // DEBUG
-
-
+	DEBUGLOG("END Setup");
 }
 
 bool AsyncFSWebServer::load_config() {
 	File configFile =  _fs->open(CONFIG_FILE, "r");
 	if (!configFile) {
-#ifdef DEBUG
-		DBG_OUTPUT_PORT.println("Failed to open config file");
-#endif // DEBUG
+		DEBUGLOG("Failed to open config file");
 		return false;
 	}
 
 	size_t size = configFile.size();
 	/*if (size > 1024) {
-#ifdef DEBUG
-		DBG_OUTPUT_PORT.println("Config file size is too large");
-#endif
+		DEBUGLOG("Config file size is too large");
 		configFile.close();
 		return false;
 	}*/
@@ -192,17 +182,13 @@ bool AsyncFSWebServer::load_config() {
 	// use configFile.readString instead.
 	configFile.readBytes(buf.get(), size);
 	configFile.close();
-#ifdef DEBUG
-	DBG_OUTPUT_PORT.print("JSON file size: "); Serial.print(size); Serial.println(" bytes");
-#endif
+	DEBUGLOG("JSON file size: %d bytes\r\n", size);
 	DynamicJsonBuffer jsonBuffer(1024);
 	//StaticJsonBuffer<1024> jsonBuffer;
 	JsonObject& json = jsonBuffer.parseObject(buf.get());
 
 	if (!json.success()) {
-#ifdef DEBUG
-		DBG_OUTPUT_PORT.println("Failed to parse config file");
-#endif // DEBUG
+		DEBUGLOG("Failed to parse config file\r\n");
 		return false;
 	}
 #ifdef DEBUG
@@ -210,10 +196,6 @@ bool AsyncFSWebServer::load_config() {
 	json.prettyPrintTo(temp);
 	Serial.println(temp);
 #endif
-	//memset(config.ssid, 0, 28);
-	//memset(config.pass, 0, 50);
-	//String("Virus_Detected!!!").toCharArray(config.ssid, 28); // Assign WiFi SSID
-	//String("LaJunglaSigloXX1@.").toCharArray(config.pass, 50); // Assign WiFi PASS
 
 	_config.ssid = json["ssid"].as<const char *>();
 
@@ -226,7 +208,6 @@ bool AsyncFSWebServer::load_config() {
 
 	_config.dhcp = json["dhcp"].as<bool>();
 
-	//String(pass_str).toCharArray(config.pass, 28);
 	_config.ntpServerName = json["ntp"].as<const char *>();
 	_config.updateNTPTimeEvery = json["NTPperiod"].as<long>();
 	_config.timezone = json["timeZone"].as<long>();
@@ -235,14 +216,13 @@ bool AsyncFSWebServer::load_config() {
 
 	//config.connectionLed = json["led"];
 
-#ifdef DEBUG
-	DBG_OUTPUT_PORT.println("Data initialized.");
-	DBG_OUTPUT_PORT.print("SSID: "); Serial.println(_config.ssid);
-	DBG_OUTPUT_PORT.print("PASS: "); Serial.println(_config.password);
-	DBG_OUTPUT_PORT.print("NTP Server: "); Serial.println(_config.ntpServerName);
-	//DBG_OUTPUT_PORT.printf("Connection LED: %d\n", config.connectionLed);
-	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
-#endif // DEBUG
+	DEBUGLOG("Data initialized.\r\n");
+	DEBUGLOG("SSID: %s ", _config.ssid.c_str());
+	DEBUGLOG("PASS: %s\r\n", _config.password.c_str());
+	DEBUGLOG("NTP Server: %s\r\n", _config.ntpServerName.c_str());
+	//DEBUGLOG("Connection LED: %d\n", config.connectionLed);
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
 
 	return true;
 }
@@ -263,9 +243,8 @@ void AsyncFSWebServer::defaultConfig() {
 	_config.deviceName = "ESP8266fs";
 	//config.connectionLed = CONNECTION_LED;
 	save_config();
-#ifdef DEBUG
-	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
-#endif // DEBUG
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
 }
 
 bool AsyncFSWebServer::save_config() {
@@ -396,12 +375,14 @@ bool AsyncFSWebServer::loadHTTPAuth() {
 	_httpAuth.wwwUsername = json["user"].asString();
 	_httpAuth.wwwPassword = json["pass"].asString();
 
-#ifdef DEBUG
-	DBG_OUTPUT_PORT.println(_httpAuth.auth ? "Secret initialized." : "Auth disabled.");
-	DBG_OUTPUT_PORT.print("User: "); DBG_OUTPUT_PORT.println(_httpAuth.wwwUsername);
-	DBG_OUTPUT_PORT.print("Pass: "); DBG_OUTPUT_PORT.println(_httpAuth.wwwPassword);
-	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
-#endif // DEBUG
+	DEBUGLOG(_httpAuth.auth ? "Secret initialized.\r\n" : "Auth disabled.\r\n");
+	if (_httpAuth.auth) {
+		DEBUGLOG("User: %s\r\n", _httpAuth.wwwUsername.c_str());
+		DEBUGLOG("Pass: %s\r\n", _httpAuth.wwwPassword.c_str());
+	}
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
+
 	return true;
 }
 
@@ -429,14 +410,11 @@ void flashLED(int pin, int times, int delayTime) {
 }
 
 void AsyncFSWebServer::configureWifiAP() {
-#ifdef DEBUG_GLOBALH
-	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
-#endif // DEBUG_GLOBALH
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
 	//WiFi.disconnect();
 	WiFi.mode(WIFI_AP);
 	String APname = _apConfig.APssid + (String)ESP.getChipId();
-	//APname += (String)ESP.getChipId();
-	//WiFi.softAP(APname.c_str(), apConfig.APpassword.c_str());
 	if (_httpAuth.auth)
 		WiFi.softAP(APname.c_str(), _httpAuth.wwwPassword.c_str());
 	else
@@ -473,11 +451,11 @@ void AsyncFSWebServer::configureWifi()
 	}*/
 
 	DBG_OUTPUT_PORT.printf("IP Address: %s\n", WiFi.localIP().toString().c_str());
-#ifdef DEBUG
-	DBG_OUTPUT_PORT.printf("Gateway:    %s\n", WiFi.gatewayIP().toString().c_str());
-	DBG_OUTPUT_PORT.printf("DNS:        %s\n", WiFi.dnsIP().toString().c_str());
-	Serial.println(__PRETTY_FUNCTION__);
-#endif // DEBUG
+
+	DEBUGLOG("Gateway:    %s\r\n", WiFi.gatewayIP().toString().c_str());
+	DEBUGLOG("DNS:        %s\r\n", WiFi.dnsIP().toString().c_str());
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
 }
 
 void AsyncFSWebServer::ConfigureOTA(String password) {
@@ -490,31 +468,29 @@ void AsyncFSWebServer::ConfigureOTA(String password) {
 	// No authentication by default
 	if (password != "") {
 		ArduinoOTA.setPassword(password.c_str());
-#ifdef DEBUG
-		DBG_OUTPUT_PORT.printf("OTA password set %s\n", password.c_str());
-#endif // DEBUG
+		DEBUGLOG("OTA password set %s\n", password.c_str());
 	}
 
 #ifdef DEBUG
 	ArduinoOTA.onStart([]() {
-		DBG_OUTPUT_PORT.println("StartOTA \n");
+		DEBUGLOG("StartOTA\r\n");
 	});
 	ArduinoOTA.onEnd(std::bind([](FS *fs) {
 		fs->end();
-		DBG_OUTPUT_PORT.println("\nEnd OTA\n");
+		DEBUGLOG("\r\nEnd OTA\r\n");
 	}, _fs));
 	ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-		DBG_OUTPUT_PORT.printf("OTA Progress: %u%%\n", (progress / (total / 100)));
+		DEBUGLOG("OTA Progress: %u%%\r\n", (progress / (total / 100)));
 	});
 	ArduinoOTA.onError([](ota_error_t error) {
-		DBG_OUTPUT_PORT.printf("Error[%u]: ", error);
-		if (error == OTA_AUTH_ERROR) DBG_OUTPUT_PORT.println("Auth Failed");
-		else if (error == OTA_BEGIN_ERROR) DBG_OUTPUT_PORT.println("Begin Failed");
-		else if (error == OTA_CONNECT_ERROR) DBG_OUTPUT_PORT.println("Connect Failed");
-		else if (error == OTA_RECEIVE_ERROR) DBG_OUTPUT_PORT.println("Receive Failed");
-		else if (error == OTA_END_ERROR) DBG_OUTPUT_PORT.println("End Failed");
+		DEBUGLOG("Error[%u]: ", error);
+		if (error == OTA_AUTH_ERROR) DEBUGLOG("Auth Failed\r\n");
+		else if (error == OTA_BEGIN_ERROR) DEBUGLOG("Begin Failed\r\n");
+		else if (error == OTA_CONNECT_ERROR) DEBUGLOG("Connect Failed\r\n");
+		else if (error == OTA_RECEIVE_ERROR) DEBUGLOG("Receive Failed\r\n");
+		else if (error == OTA_END_ERROR) DEBUGLOG("End Failed\r\n");
 	});
-	DBG_OUTPUT_PORT.println("\nOTA Ready");
+	DEBUGLOG("\r\nOTA Ready");
 #endif // DEBUG
 	ArduinoOTA.begin();
 }
@@ -770,9 +746,9 @@ void AsyncFSWebServer::send_network_configuration_values_html(AsyncWebServerRequ
 	values += "dhcp|" + (String)(_config.dhcp ? "checked" : "") + "|chk\n";
 
 	request->send(200, "text/plain", values);
-#ifdef DEBUG_DYNAMICDATA
-	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
-#endif // DEBUG_DYNAMICDATA
+
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
 }
 
 void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *request)
@@ -992,16 +968,14 @@ void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *re
 		DBG_OUTPUT_PORT.println(request->url());
 		handleFileRead(request->url(), request);
 	}
-#ifdef DEBUG_DYNAMICDATA
-	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
-#endif // DEBUG_DYNAMICDATA
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
 }
 
 void AsyncFSWebServer::send_general_configuration_html(AsyncWebServerRequest *request)
 {
-#ifdef DEBUG_DYNAMICDATA
-	DBG_OUTPUT_PORT.println(__FUNCTION__);
-#endif // DEBUG_DYNAMICDATA
+	DEBUGLOG(__FUNCTION__);
+	DEBUGLOG("\r\n");
 
 	if (!checkAuth(request))
 		return request->requestAuthentication();
@@ -1009,9 +983,7 @@ void AsyncFSWebServer::send_general_configuration_html(AsyncWebServerRequest *re
 	if (request->args() > 0)  // Save Settings
 	{
 		for (uint8_t i = 0; i < request->args(); i++) {
-#ifdef DEBUG_DYNAMICDATA
-			DBG_OUTPUT_PORT.printf("Arg %d: %s\n", i, request->arg(i).c_str());
-#endif // DEBUG_DYNAMICDATA
+			DEBUGLOG("Arg %d: %s\r\n", i, request->arg(i).c_str());
 			if (request->argName(i) == "devicename") {
 				_config.deviceName = urldecode(request->arg(i));
 				continue;
@@ -1028,9 +1000,9 @@ void AsyncFSWebServer::send_general_configuration_html(AsyncWebServerRequest *re
 	{
 		handleFileRead(request->url(), request);
 	}
-#ifdef DEBUG_DYNAMICDATA
-	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
-#endif // DEBUG_DYNAMICDATA
+
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
 }
 
 void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *request)
@@ -1061,9 +1033,7 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
 			}
 			if (request->argName(i) == "dst") {
 				_config.daylight = true;
-#ifdef DEBUG_DYNAMICDATA
-				DBG_OUTPUT_PORT.printf("Daylight Saving: %d\n", config.daylight);
-#endif // DEBUG_DYNAMICDATA
+				DEBUGLOG("Daylight Saving: %d\r\n", _config.daylight);
 				continue;
 			}
 		}
@@ -1076,17 +1046,15 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
 	}
 	handleFileRead("/ntp.html", request);
 	//server.send(200, "text/html", PAGE_NTPConfiguration);
-#ifdef DEBUG_DYNAMICDATA
-	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
-#endif // DEBUG_DYNAMICDATA
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
 
 }
 
 void AsyncFSWebServer::restart_esp(AsyncWebServerRequest *request) {
-	//server.send(200, "text/html", Page_Restart);
-#ifdef DEBUG_DYNAMICDATA
-	DBG_OUTPUT_PORT.println(__FUNCTION__);
-#endif // DEBUG_DYNAMICDATA
+	request->send(200, "text/html", Page_Restart);
+	DEBUGLOG(__FUNCTION__);
+	DEBUGLOG("\r\n");
 	_fs->end(); // SPIFFS.end();
 	delay(1000);
 	ESP.restart();
@@ -1100,16 +1068,14 @@ void AsyncFSWebServer::send_wwwauth_configuration_values_html(AsyncWebServerRequ
 	values += "wwwpass|" + (String)_httpAuth.wwwPassword + "|input\n";
 
 	request->send(200, "text/plain", values);
-#ifdef DEBUG_DYNAMICDATA
-	DBG_OUTPUT_PORT.println(__FUNCTION__);
-#endif // DEBUG_DYNAMICDATA
+
+	DEBUGLOG(__FUNCTION__);
+	DEBUGLOG("\r\n");
 }
 
 void AsyncFSWebServer::send_wwwauth_configuration_html(AsyncWebServerRequest *request)
 {
-#ifdef DEBUG_DYNAMICDATA
-	DBG_OUTPUT_PORT.printf("%s %d\n", __FUNCTION__, request->args());
-#endif // DEBUG_DYNAMICDATA
+	DEBUGLOG("%s %d\n", __FUNCTION__, request->args());
 	if (request->args() > 0)  // Save Settings
 	{
 		_httpAuth.auth = false;
@@ -1117,23 +1083,17 @@ void AsyncFSWebServer::send_wwwauth_configuration_html(AsyncWebServerRequest *re
 		for (uint8_t i = 0; i < request->args(); i++) {
 			if (request->argName(i) == "wwwuser") {
 				_httpAuth.wwwUsername = urldecode(request->arg(i));
-#ifdef DEBUG_DYNAMICDATA
-				DBG_OUTPUT_PORT.printf("User: %s\n", httpAuth.wwwUsername.c_str());
-#endif // DEBUG_DYNAMICDATA
+				DEBUGLOG("User: %s\n", _httpAuth.wwwUsername.c_str());
 				continue;
 			}
 			if (request->argName(i) == "wwwpass") {
 				_httpAuth.wwwPassword = urldecode(request->arg(i));
-#ifdef DEBUG_DYNAMICDATA
-				DBG_OUTPUT_PORT.printf("Pass: %s\n", httpAuth.wwwPassword.c_str());
-#endif // DEBUG_DYNAMICDATA
+				DEBUGLOG("Pass: %s\n", _httpAuth.wwwPassword.c_str());
 				continue;
 			}
 			if (request->argName(i) == "wwwauth") {
 				_httpAuth.auth = true;
-#ifdef DEBUG_DYNAMICDATA
-				DBG_OUTPUT_PORT.printf("HTTP Auth enabled\n");
-#endif // DEBUG_DYNAMICDATA
+				DEBUGLOG("HTTP Auth enabled\r\n");
 				continue;
 			}
 		}
@@ -1141,18 +1101,16 @@ void AsyncFSWebServer::send_wwwauth_configuration_html(AsyncWebServerRequest *re
 		saveHTTPAuth();
 	}
 	handleFileRead("/system.html", request);
-#ifdef DEBUG_DYNAMICDATA
-	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
-#endif // DEBUG_DYNAMICDATA
 
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
 }
 
 bool AsyncFSWebServer::saveHTTPAuth() {
 	//flag_config = false;
-#ifdef DEBUG
-	DBG_OUTPUT_PORT.println("Save secret");
-#endif
-	StaticJsonBuffer<256> jsonBuffer;
+	DEBUGLOG("Save secret\r\n");
+	DynamicJsonBuffer jsonBuffer(256);
+	//StaticJsonBuffer<256> jsonBuffer;
 	JsonObject& json = jsonBuffer.createObject();
 	json["auth"] = _httpAuth.auth;
 	json["user"] = _httpAuth.wwwUsername;
@@ -1161,9 +1119,7 @@ bool AsyncFSWebServer::saveHTTPAuth() {
 	//TODO add AP data to html
 	File configFile = _fs->open(SECRET_FILE, "w");
 	if (!configFile) {
-#ifdef DEBUG
-		DBG_OUTPUT_PORT.println("Failed to open secret file for writing");
-#endif // DEBUG
+		DEBUGLOG("Failed to open secret file for writing\r\n");
 		configFile.close();
 		return false;
 	}
@@ -1187,10 +1143,8 @@ void AsyncFSWebServer::send_update_firmware_values_html(AsyncWebServerRequest *r
 	bool updateOK = maxSketchSpace < ESP.getFreeSketchSpace();
 	StreamString result;
 	Update.printError(result);
-#ifdef DEBUG_DYNAMICDATA
-	DBG_OUTPUT_PORT.printf("--MaxSketchSpace: %d\n", maxSketchSpace);
-	DBG_OUTPUT_PORT.printf("--Update error = %s\n", result.c_str());
-#endif // DEBUG_DYNAMICDATA
+	DEBUGLOG("--MaxSketchSpace: %d\n", maxSketchSpace);
+	DEBUGLOG("--Update error = %s\n", result.c_str());
 	values += "remupd|" + (String)((updateOK) ? "OK" : "ERROR") + "|div\n";
 
 	if (Update.hasError()) {
@@ -1202,32 +1156,24 @@ void AsyncFSWebServer::send_update_firmware_values_html(AsyncWebServerRequest *r
 	}
 
 	request->send(200, "text/plain", values);
-#ifdef DEBUG_DYNAMICDATA
-	DBG_OUTPUT_PORT.println(__FUNCTION__);
-#endif // DEBUG_DYNAMICDATA
+	DEBUGLOG(__FUNCTION__);
+	DEBUGLOG("\r\n")
 }
 
 void AsyncFSWebServer::setUpdateMD5(AsyncWebServerRequest *request) {
 	_browserMD5 = "";
-#ifdef DEBUG_WEBSERVER
-	DBG_OUTPUT_PORT.printf("Arg number: %d\n", request->args());
-#endif // DEBUG_WEBSERVER
+	DEBUGLOG("Arg number: %d\r\n", request->args());
 	if (request->args() > 0)  // Read hash
 	{
-		//String temp = "";
 		for (uint8_t i = 0; i < request->args(); i++) {
-#ifdef DEBUG_WEBSERVER
-			DBG_OUTPUT_PORT.printf("Arg %s: %s\n", request->argName(i).c_str(), request->arg(i).c_str());
-#endif // DEBUG_WEBSERVER
+			DEBUGLOG("Arg %s: %s\r\n", request->argName(i).c_str(), request->arg(i).c_str());
 			if (request->argName(i) == "md5") {
 				_browserMD5 = urldecode(request->arg(i));
 				Update.setMD5(_browserMD5.c_str());
 				continue;
 			}if (request->argName(i) == "size") {
 				_updateSize = request->arg(i).toInt();
-#ifdef DEBUG_WEBSERVER
-				DBG_OUTPUT_PORT.printf("Update size: %u\n", request->arg(i).toInt());
-#endif // DEBUG_WEBSERVER
+				DEBUGLOG("Update size: %u\r\n", request->arg(i).toInt());
 				continue;
 			}
 		}
@@ -1287,15 +1233,13 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
 void AsyncFSWebServer::webSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length) {
 
 	if (type == WS_EVT_DISCONNECT) {
-#ifdef DEBUG_DYNAMICDATA
-		DBG_OUTPUT_PORT.printf("[%u] Disconnected!\n", client->id());
-#endif // DEBUG_DYNAMICDATA
+		DEBUGLOG("[%u] Disconnected!\r\n", client->id());
 	}
 	else if (type == WS_EVT_CONNECT) {
 #ifdef DEBUG_DYNAMICDATA
 		wsNumber = client->id();
 		IPAddress ip = client->remoteIP();
-		DBG_OUTPUT_PORT.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", client->id(), ip[0], ip[1], ip[2], ip[3], payload);
+		DEBUGLOG("[%u] Connected from %d.%d.%d.%d url: %s\r\n", client->id(), ip[0], ip[1], ip[2], ip[3], payload);
 #endif // DEBUG_DYNAMICDATA
 
 		// send message to client
@@ -1318,10 +1262,8 @@ void AsyncFSWebServer::webSocketEvent(AsyncWebSocket * server, AsyncWebSocketCli
 					msg += buff;
 				}
 			}
-#ifdef DEBUG_DYNAMICDATA
-			DBG_OUTPUT_PORT.printf("ws[%s][%u] %s-message[%llu]: ", server->url(), client->id(), (info->opcode == WS_TEXT) ? "text" : "binary", info->len);
-			DBG_OUTPUT_PORT.printf("%s\r\n", msg.c_str());
-#endif // DEBUG_DYNAMICDATA
+			DEBUGLOG("ws[%s][%u] %s-message[%llu]: ", server->url(), client->id(), (info->opcode == WS_TEXT) ? "text" : "binary", info->len);
+			DEBUGLOG("%s\r\n", msg.c_str());
 		}
 		else {
 			//message is comprised of multiple frames or the frame is split into multiple packets
@@ -1460,10 +1402,10 @@ void AsyncFSWebServer::serverInit() {
 		ESP.restart();
 	}, this, _1), std::bind(&AsyncFSWebServer::updateFirmware, this, _1, _2, _3, _4, _5, _6));
 
-	DEBUGLOG("2\n");
 	_ws->onEvent([this](AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length) {
 		this->webSocketEvent(server, client, type, arg, payload, length);
 	});
+
 	addHandler(_ws);
 
 	//called when the url is not defined here
@@ -1514,9 +1456,7 @@ void AsyncFSWebServer::serverInit() {
 	});
 	//server.begin(); --> Not here
 	//httpUpdater.setup(&server,httpAuth.wwwUsername,httpAuth.wwwPassword);
-#ifdef DEBUG_WEBSERVER
-	DBG_OUTPUT_PORT.println("HTTP server started");
-#endif // DEBUG_WEBSERVER
+	DEBUGLOG("HTTP server started");
 }
 
 bool AsyncFSWebServer::checkAuth(AsyncWebServerRequest *request) {
