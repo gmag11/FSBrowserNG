@@ -1384,7 +1384,9 @@ void AsyncFSWebServer::serverInit() {
 		request->send(response);
 		this->_fs->end();
 		ESP.restart();
-	}, std::bind(&AsyncFSWebServer::updateFirmware, this, _1, _2, _3, _4, _5, _6));
+	}, [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+		this->updateFirmware(request, filename, index, data, len, final);
+	});
 
 	_ws->onEvent([this](AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length) {
 		this->webSocketEvent(server, client, type, arg, payload, length);
