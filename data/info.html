@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" href="style.css" type="text/css" />
+<script src="microajax.js"></script>
+<a href="admin.html"  class="btn btn--s"><</a>&nbsp;&nbsp;<strong>Network Information</strong>
+	<hr>
+	<table border="0"  cellspacing="0" cellpadding="3" style="width:310px" >
+		<tr>
+			<td align="right">SSID :</td>
+			<td>
+				<span id="x_ssid"></span>
+			</td>
+		</tr>
+		<tr>
+			<td align="right">IP :</td>
+			<td>
+				<span id="x_ip"></span>
+			</td>
+		</tr>
+		<tr>
+			<td align="right">Netmask :</td>
+			<td>
+				<span id="x_netmask"></span>
+			</td>
+		</tr>
+		<tr>
+			<td align="right">Gateway :</td>
+			<td>
+				<span id="x_gateway"></span>
+			</td>
+		</tr>
+		<tr>
+			<td align="right">DNS :</td>
+			<td>
+				<span id="x_dns"></span>
+			</td>
+		</tr>
+		<tr>
+			<td align="right">Mac :</td>
+			<td>
+				<span id="x_mac"></span>
+			</td>
+		</tr>
+
+		<tr>
+			<td colspan="2">
+			<span><hr></span>
+		</td>
+	</tr>
+	<tr>
+		<td align="right">NTP Date:</td>
+		<td>
+			<span id="x_ntp_date"></span>
+		</td>
+	</tr>
+  <tr>
+    <td align="right">NTP Time:</td>
+    <td>
+      <span id="x_ntp_time"></span>
+    </td>
+  </tr>
+  <tr>
+    <td align="right">Last sync:</td>
+    <td>
+      <span id="x_ntp_sync"></span>
+    </td>
+  </tr>
+
+	<tr>
+		<td colspan="2" align="center">
+			<a href="javascript:GetState(); init()" class="btn btn--m btn--blue">Refresh</a>
+		</td>
+	</tr>
+</table>
+<script>
+
+	function GetState()
+	{
+		setValues("/admin/infovalues");
+	}
+
+	window.onload = function ()
+	{
+		load("style.css","css", function()
+		{
+			load("microajax.js","js", function()
+			{
+				GetState();
+			});
+		});
+	}
+	function load(e, t, n) {
+		if ("js" == t) {
+			var a = document.createElement("script");
+			a.src = e,
+			a.type = "text/javascript",
+			a.async = !1,
+			a.onload = function () { n() },
+			document.getElementsByTagName("head")[0].appendChild(a)
+		} else if ("css" == t) {
+			var a = document.createElement("link");
+			a.href = e,
+			a.rel = "stylesheet",
+			a.type = "text/css",
+			a.async = !1,
+			a.onload = function () { n() },
+			document.getElementsByTagName("head")[0].appendChild(a)
+		}
+	}
+
+
+
+</script>
+<script language="javascript" type="text/javascript">
+    var wsUri = "ws://"+location.host+"/ws";
+    //var wsUri = "ws://192.168.5.15:81/";
+    var output;
+
+    function init() {
+        testWebSocket();
+    }
+
+    function testWebSocket() {
+        websocket = new WebSocket(wsUri);
+        websocket.onopen = function (evt) {
+            console.log("CONNECTED");
+        };
+        websocket.onclose = function (evt) {
+            console.log("DISCONNECTED");
+        };
+        websocket.onmessage = function (evt) {
+            if (evt.data[0] == "T") {
+                var time;
+                time = evt.data.substring(1);
+                document.getElementById("x_ntp_time").innerHTML = time;
+            };
+            if (evt.data[0] == "D") {
+                var date;
+                date = evt.data.substring(1);
+                document.getElementById("x_ntp_date").innerHTML = date;
+            };
+            if (evt.data[0] == "S") {
+                var sync;
+                sync = evt.data.substring(1);
+                document.getElementById("x_ntp_sync").innerHTML = sync;
+            };
+        };
+        websocket.onerror = function (evt) {
+            console.log("ERROR: " + evt.data);
+        };
+    }
+
+    window.addEventListener("load", init, true);
+</script>
