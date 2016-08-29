@@ -5,6 +5,13 @@
 #define DEBUG
 
 #define DBG_OUTPUT_PORT Serial
+
+#ifdef DEBUG
+#define DEBUGLOG(...) DBG_OUTPUT_PORT.printf(__VA_ARGS__)
+#else
+#define DEBUGLOG(...)
+#endif
+
 #define CONNECTION_LED 2 // Connection LED pin (Built in)
 #define AP_ENABLE_BUTTON 4 // Button pin to enable AP during startup for configuration
 
@@ -23,10 +30,7 @@ const char Page_Restart[] PROGMEM = R"=====(
 Please Wait....Configuring and Restarting.
 )=====";
 
-AsyncFSWebServer::AsyncFSWebServer(uint16_t port) : AsyncWebServer(port)
-{
-	
-}
+AsyncFSWebServer::AsyncFSWebServer(uint16_t port) : AsyncWebServer(port) {}
 
 void AsyncFSWebServer::secondTick()
 {
@@ -34,9 +38,7 @@ void AsyncFSWebServer::secondTick()
 }
 
 void AsyncFSWebServer::secondTask() {
-#ifdef DEBUG_GLOBALH
-	//DBG_OUTPUT_PORT.println(ntp->getTimeString());
-#endif // DEBUG_GLOBALH
+	DEBUGLOG(NTP.getTimeDateString().c_str());
 	sendTimeData();
 }
 
@@ -52,9 +54,7 @@ void AsyncFSWebServer::sendTimeData() {
 	_ws->textAll(date);
 	String sync = "S" + NTP.getTimeDateString(NTP.getLastNTPSync());
 	_ws->textAll(sync);
-#ifdef DEBUG_DYNAMICDATA
-	//DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
-#endif // DEBUG_DYNAMICDATA
+	DEBUGLOG(__PRETTY_FUNCTION__);
 }
 
 String formatBytes(size_t bytes) {
@@ -99,7 +99,6 @@ void AsyncFSWebServer::begin(FS* fs)
 	}
 	if (!_fs) // If SPIFFS is not started
 		_fs->begin();
-
 #ifdef DEBUG
 	{ // List files
 		Dir dir = _fs->openDir("/");
@@ -120,9 +119,12 @@ void AsyncFSWebServer::begin(FS* fs)
 	//WIFI INIT
 
 	// Register wifi Event to control connection LED
-	WiFi.onStationModeGotIP(std::bind(&AsyncFSWebServer::onWiFiGotIp, this, _1));
-	WiFi.onStationModeDisconnected(std::bind(&AsyncFSWebServer::onWiFiDisconnected, this, _1));
-
+	onStationModeConnectedHandler = WiFi.onStationModeConnected([this](WiFiEventStationModeConnected data) {
+		this->onWiFiConnected(data);
+	});
+	onStationModeDisconnectedHandler = WiFi.onStationModeDisconnected([this](WiFiEventStationModeDisconnected data) {
+		this->onWiFiDisconnected(data);
+	});
 	WiFi.hostname(_config.deviceName.c_str());
 	if (AP_ENABLE_BUTTON >= 0) {
 		if (_apConfig.APenable) {
@@ -135,7 +137,6 @@ void AsyncFSWebServer::begin(FS* fs)
 	else {
 		configureWifi(); // Set WiFi config
 	}
-
 #ifdef DEBUG
 	DBG_OUTPUT_PORT.print("Open http://");
 	DBG_OUTPUT_PORT.print(_config.deviceName);
@@ -151,14 +152,13 @@ void AsyncFSWebServer::begin(FS* fs)
 	}
 
 	_secondTk.attach(1.0f, &AsyncFSWebServer::s_secondTick, static_cast<void*>(this)); // Task to run periodic things every second
-	*_ws = AsyncWebSocket("/ws");
+	AsyncWebSocket ws("/ws");
+	_ws = &ws;
 	serverInit(); // Configure and start Web server
 	AsyncWebServer::begin();
-
 	MDNS.begin(_config.deviceName.c_str()); // I've not got this to work. Need some investigation.
 	MDNS.addService("http", "tcp", 80);
 	ConfigureOTA(_httpAuth.wwwPassword.c_str());
-
 #ifdef DEBUG
 	DBG_OUTPUT_PORT.println("END Setup");
 #endif // DEBUG
@@ -519,19 +519,18 @@ void AsyncFSWebServer::ConfigureOTA(String password) {
 	ArduinoOTA.begin();
 }
 
-void AsyncFSWebServer::onWiFiGotIp(WiFiEventStationModeGotIP data) {
+void AsyncFSWebServer::onWiFiConnected(WiFiEventStationModeConnected data) {
 	if (CONNECTION_LED >= 0) {
 		digitalWrite(CONNECTION_LED, LOW); // Turn LED on
 	}
-	//DBG_OUTPUT_PORT.printf("Led %s on\n", CONNECTION_LED);
+	DEBUGLOG("Led %s on\n", CONNECTION_LED);
 	//turnLedOn();
 	wifiDisconnectedSince = 0;
 }
 
 void AsyncFSWebServer::onWiFiDisconnected(WiFiEventStationModeDisconnected data) {
-#ifdef DEBUG_GLOBALH
-	DBG_OUTPUT_PORT.println("case STA_DISCONNECTED");
-#endif // DEBUG_GLOBALH
+	DEBUGLOG("case STA_DISCONNECTED");
+
 	if (CONNECTION_LED >= 0) {
 		digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
 	}
@@ -540,9 +539,7 @@ void AsyncFSWebServer::onWiFiDisconnected(WiFiEventStationModeDisconnected data)
 	if (wifiDisconnectedSince == 0) {
 		wifiDisconnectedSince = millis();
 	}
-#ifdef DEBUG
-	DBG_OUTPUT_PORT.printf("Disconnected for %d seconds\n", (int)((millis() - wifiDisconnectedSince) / 1000));
-#endif // DEBUG
+	DEBUGLOG("Disconnected for %d seconds\n", (int)((millis() - wifiDisconnectedSince) / 1000));
 }
 
 /*
@@ -632,15 +629,7 @@ String getContentType(String filename, AsyncWebServerRequest *request) {
 	return "text/plain";
 }
 
-/*
-void AsyncFSWebServer::handleFileRead_edit_html(AsyncWebServerRequest *request) {
-	if (!checkAuth(request))
-		return request->requestAuthentication();
-	handleFileRead(request, "/edit.html");
-}
-*/
-
-bool AsyncFSWebServer::handleFileRead(AsyncWebServerRequest *request, String path) {
+bool AsyncFSWebServer::handleFileRead(String path, AsyncWebServerRequest *request) {
 #ifdef DEBUG_WEBSERVER
 	DBG_OUTPUT_PORT.println("handleFileRead: " + path);
 #endif // DEBUG_WEBSERVER
@@ -741,10 +730,7 @@ void AsyncFSWebServer::handleFileUpload(AsyncWebServerRequest *request, String f
 	if (final) { // End
 		if (fsUploadFile)
 			fsUploadFile.close();
-#ifdef DEBUG_WEBSERVER
-		DBG_OUTPUT_PORT.printf("handleFileUpload Size: %u\n", len);
-#endif // DEBUG_WEBSERVER
-
+		DEBUGLOG("handleFileUpload Size: %u\n", len);
 	}
 }
 
@@ -1004,7 +990,7 @@ void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *re
 	else
 	{
 		DBG_OUTPUT_PORT.println(request->url());
-		handleFileRead(request, request->url());
+		handleFileRead(request->url(), request);
 	}
 #ifdef DEBUG_DYNAMICDATA
 	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
@@ -1040,7 +1026,7 @@ void AsyncFSWebServer::send_general_configuration_html(AsyncWebServerRequest *re
 	}
 	else
 	{
-		handleFileRead(request, request->url());
+		handleFileRead(request->url(), request);
 	}
 #ifdef DEBUG_DYNAMICDATA
 	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
@@ -1088,7 +1074,7 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
 
 		setTime(NTP.getTime()); //set time
 	}
-	handleFileRead(request, "/ntp.html");
+	handleFileRead("/ntp.html", request);
 	//server.send(200, "text/html", PAGE_NTPConfiguration);
 #ifdef DEBUG_DYNAMICDATA
 	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
@@ -1154,7 +1140,7 @@ void AsyncFSWebServer::send_wwwauth_configuration_html(AsyncWebServerRequest *re
 
 		saveHTTPAuth();
 	}
-	handleFileRead(request, "/system.html");
+	handleFileRead("/system.html", request);
 #ifdef DEBUG_DYNAMICDATA
 	DBG_OUTPUT_PORT.println(__PRETTY_FUNCTION__);
 #endif // DEBUG_DYNAMICDATA
@@ -1387,24 +1373,34 @@ void AsyncFSWebServer::webSocketEvent(AsyncWebSocket * server, AsyncWebSocketCli
 void AsyncFSWebServer::serverInit() {
 	//SERVER INIT
 	//list directory
-	on("/list", HTTP_GET, std::bind(
-		[](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
-			if (!self->checkAuth(request))
+	on("/list", HTTP_GET, [this](AsyncWebServerRequest *request) {
+			if (!this->checkAuth(request))
 				return request->requestAuthentication();
-			self->handleFileList(request);
-		}, 
-		this, _1));
-		
-		//std::bind(&AsyncFSWebServer::handleFileList, this, _1));
+			this->handleFileList(request);
+		});
 	//load editor
-	on("/edit", HTTP_GET, std::bind(&AsyncFSWebServer::handleFileRead, this, _1, "/index.html")); // Have to check this
+	on("/edit", HTTP_GET, [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
+		if (!this->handleFileRead("/edit.html", request))
+			request->send(404, "text/plain", "FileNotFound");
+	});
 	//create file
-	on("/edit", HTTP_PUT, std::bind(&AsyncFSWebServer::handleFileCreate, this, _1));
-	//delete file
-	on("/edit", HTTP_DELETE, std::bind(&AsyncFSWebServer::handleFileDelete, this, _1));
+	on("/edit", HTTP_PUT, [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
+		this->handleFileCreate(request);
+	});	//delete file
+	on("/edit", HTTP_DELETE, [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
+		this->handleFileDelete(request);
+	});
 	//first callback is called after the request has ended with all parsed arguments
 	//second callback handles file uploads at that location
-	on("/edit", HTTP_POST, [](AsyncWebServerRequest *request) { request->send(200, "text/plain", ""); }, std::bind(&AsyncFSWebServer::handleFileUpload, this, _1, _2, _3, _4, _5, _6));
+	on("/edit", HTTP_POST, [](AsyncWebServerRequest *request) { request->send(200, "text/plain", ""); }, [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+		this->handleFileUpload(request, filename, index, data, len, final)
+	});
 	on("/admin/generalvalues", HTTP_GET, std::bind(&AsyncFSWebServer::send_general_configuration_values_html, this, _1));
 	on("/admin/values", std::bind(&AsyncFSWebServer::send_network_configuration_values_html, this, _1));
 	on("/admin/connectionstate", std::bind(&AsyncFSWebServer::send_connection_state_values_html, this, _1));
@@ -1428,7 +1424,7 @@ void AsyncFSWebServer::serverInit() {
 	on("/admin", HTTP_GET, std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
 		if (!self->checkAuth(request))
 			return request->requestAuthentication();
-		if (!self->handleFileRead(request, "/admin.html"))
+		if (!self->handleFileRead("/admin.html", request))
 			request->send(404, "text/plain", "FileNotFound");
 	}, this, _1));
 	on("/system.html", std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
@@ -1450,7 +1446,7 @@ void AsyncFSWebServer::serverInit() {
 	on("/update", HTTP_GET, std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
 		if (!self->checkAuth(request))
 			return request->requestAuthentication();
-		if (!self->handleFileRead(request, "/update.html"))
+		if (!self->handleFileRead("/update.html", request))
 			request->send(404, "text/plain", "FileNotFound");
 	}, this, _1));
 	on("/update", HTTP_POST, std::bind([](AsyncFSWebServer* self, AsyncWebServerRequest *request) {
@@ -1464,7 +1460,10 @@ void AsyncFSWebServer::serverInit() {
 		ESP.restart();
 	}, this, _1), std::bind(&AsyncFSWebServer::updateFirmware, this, _1, _2, _3, _4, _5, _6));
 
-	_ws->onEvent(std::bind(&AsyncFSWebServer::webSocketEvent, this, _1, _2, _3, _4, _5, _6));
+	DEBUGLOG("2\n");
+	_ws->onEvent([this](AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length) {
+		this->webSocketEvent(server, client, type, arg, payload, length);
+	});
 	addHandler(_ws);
 
 	//called when the url is not defined here
@@ -1476,7 +1475,7 @@ void AsyncFSWebServer::serverInit() {
 		AsyncWebServerResponse *response = request->beginResponse(200);
 		response->addHeader("Connection", "close");
 		response->addHeader("Access-Control-Allow-Origin", "*");
-		if (!self->handleFileRead(request, request->url()))
+		if (!self->handleFileRead(request->url(), request))
 			request->send(404, "text/plain", "FileNotFound");
 	}, this, _1));
 

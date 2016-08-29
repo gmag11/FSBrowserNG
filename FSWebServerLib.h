@@ -67,6 +67,8 @@ protected:
 	String _browserMD5 = "";
 	uint32_t _updateSize = 0;
 
+	WiFiEventHandler onStationModeConnectedHandler, onStationModeDisconnectedHandler;
+
 	//uint currentWifiStatus;
 
 	Ticker _secondTk;
@@ -86,7 +88,7 @@ protected:
 	void ConfigureOTA(String password);
 	void serverInit();
 	
-	void onWiFiGotIp(WiFiEventStationModeGotIP data);
+	void onWiFiConnected(WiFiEventStationModeConnected data);
 	void onWiFiDisconnected(WiFiEventStationModeDisconnected data);
 
 	void secondTick();
@@ -97,7 +99,7 @@ protected:
 	bool checkAuth(AsyncWebServerRequest *request);
 	void handleFileList(AsyncWebServerRequest *request);
 	//void handleFileRead_edit_html(AsyncWebServerRequest *request);
-	bool handleFileRead(AsyncWebServerRequest *request, String path);
+	bool handleFileRead(String path, AsyncWebServerRequest *request);
 	void handleFileCreate(AsyncWebServerRequest *request);
 	void handleFileDelete(AsyncWebServerRequest *request);
 	void handleFileUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
