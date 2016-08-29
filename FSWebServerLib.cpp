@@ -659,32 +659,28 @@ void AsyncFSWebServer::handleFileDelete(AsyncWebServerRequest *request) {
 }
 
 void AsyncFSWebServer::handleFileUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
-	File fsUploadFile;
+	static File fsUploadFile;
 	
-	//if (request->url() != "/edit") return;
 	if (!index) { // Start
 		DEBUGLOG("handleFileUpload Name: %s\r\n", filename.c_str());
 		if (!filename.startsWith("/")) filename = "/" + filename;
-		File fsUploadFile = _fs->open(filename, "w");
-		if (fsUploadFile) {
-			if (fsUploadFile.write(data, len) != len) {
-				DEBUGLOG("Write error during upload\r\n");
-			}
-		}
+		fsUploadFile = _fs->open(filename, "w");
+		DEBUGLOG("First upload part.\r\n");
+
 	}
 	// Continue
 	if (fsUploadFile) {
+		DEBUGLOG("Continue upload part. Size = %u\r\n", len);
 		if (fsUploadFile.write(data, len) != len) {
 			DBG_OUTPUT_PORT.println("Write error during upload");
 		}
 	}
 	/*for (size_t i = 0; i < len; i++) {
-	if (fsUploadFile)
-	fsUploadFile.write(data[i]);
+		if (fsUploadFile)
+			fsUploadFile.write(data[i]);
 	}*/
 	if (final) { // End
 		if (fsUploadFile) {
-			
 			fsUploadFile.close();
 		}
 		DEBUGLOG("handleFileUpload Size: %u\n", len);
@@ -1075,8 +1071,8 @@ void AsyncFSWebServer::send_wwwauth_configuration_html(AsyncWebServerRequest *re
 	}
 	handleFileRead("/system.html", request);
 
-	DEBUGLOG(__PRETTY_FUNCTION__);
-	DEBUGLOG("\r\n");
+	//DEBUGLOG(__PRETTY_FUNCTION__);
+	//DEBUGLOG("\r\n");
 }
 
 bool AsyncFSWebServer::saveHTTPAuth() {
