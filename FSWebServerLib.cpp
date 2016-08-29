@@ -83,6 +83,19 @@ String formatBytes(size_t bytes) {
 	}
 }
 
+void flashLED(int pin, int times, int delayTime) {
+	int oldState = digitalRead(pin);
+	DEBUGLOG("---Flash LED during %d ms %d times. Old state = %d\r\n", delayTime, times, oldState);
+
+	for (int i = 0; i < times; i++) {
+		digitalWrite(pin, LOW); // Turn on LED
+		delay(delayTime);
+		digitalWrite(pin, HIGH); // Turn on LED
+		delay(delayTime);
+	}
+	digitalWrite(pin, oldState); // Turn on LED
+}
+
 void AsyncFSWebServer::begin(FS* fs)
 {
 	_fs = fs;
@@ -152,10 +165,10 @@ void AsyncFSWebServer::begin(FS* fs)
 	}
 	DEBUGLOG("Open http://");
 	DEBUGLOG(_config.deviceName.c_str());
-	DEBUGLOG(".local/edit to see the file browser");
-	DEBUGLOG("Flash chip size: %u\n", ESP.getFlashChipRealSize());
-	DEBUGLOG("Scketch size: %u\n", ESP.getSketchSize());
-	DEBUGLOG("Free flash space: %u\n", ESP.getFreeSketchSpace());
+	DEBUGLOG(".local/edit to see the file browser\r\n");
+	DEBUGLOG("Flash chip size: %u\r\n", ESP.getFlashChipRealSize());
+	DEBUGLOG("Scketch size: %u\r\n", ESP.getSketchSize());
+	DEBUGLOG("Free flash space: %u\r\n", ESP.getFreeSketchSpace());
 
 	_secondTk.attach(1.0f, &AsyncFSWebServer::s_secondTick, static_cast<void*>(this)); // Task to run periodic things every second
 	//AsyncWebSocket ws = AsyncWebSocket("/ws");
@@ -397,28 +410,20 @@ void AsyncFSWebServer::handle()
 	ArduinoOTA.handle();
 }
 
-void flashLED(int pin, int times, int delayTime) {
-	int oldState = digitalRead(pin);
-
-	for (int i = 0; i < times; i++) {
-		digitalWrite(pin, LOW); // Turn on LED
-		delay(delayTime);
-		digitalWrite(pin, HIGH); // Turn on LED
-		delay(delayTime);
-	}
-	digitalWrite(pin, oldState); // Turn on LED
-}
-
 void AsyncFSWebServer::configureWifiAP() {
 	DEBUGLOG(__PRETTY_FUNCTION__);
 	DEBUGLOG("\r\n");
 	//WiFi.disconnect();
 	WiFi.mode(WIFI_AP);
 	String APname = _apConfig.APssid + (String)ESP.getChipId();
-	if (_httpAuth.auth)
+	if (_httpAuth.auth) {
 		WiFi.softAP(APname.c_str(), _httpAuth.wwwPassword.c_str());
-	else
+		DEBUGLOG("AP Pass enabled: %s\r\n", _httpAuth.wwwPassword.c_str());
+	}
+	else {
 		WiFi.softAP(APname.c_str());
+		DEBUGLOG("AP Pass disabled\r\n");
+	}
 	if (CONNECTION_LED >= 0) {
 		flashLED(CONNECTION_LED, 3, 250);
 	}
@@ -599,7 +604,7 @@ bool AsyncFSWebServer::handleFileRead(String path, AsyncWebServerRequest *reques
 	DEBUGLOG("handleFileRead: %s\r\n", path.c_str());
 	if (CONNECTION_LED >= 0) {
 		// CANNOT RUN DELAY() INSIDE CALLBACK
-		//flashLED(CONNECTION_LED, 1, 25); // Show activity on LED
+		flashLED(CONNECTION_LED, 1, 25); // Show activity on LED
 	}
 	if (path.endsWith("/"))
 		path += "index.htm";
@@ -723,6 +728,7 @@ void AsyncFSWebServer::send_network_configuration_values_html(AsyncWebServerRequ
 	values += "dhcp|" + (String)(_config.dhcp ? "checked" : "") + "|chk\n";
 
 	request->send(200, "text/plain", values);
+	values = "";
 
 	DEBUGLOG(__PRETTY_FUNCTION__);
 	DEBUGLOG("\r\n");
@@ -740,8 +746,6 @@ void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *
 	else if (WiFi.status() == 4) state = "CONNECT FAILED";
 	else if (WiFi.status() == 5) state = "CONNECTION LOST";
 	else if (WiFi.status() == 6) state = "DISCONNECTED";
-
-
 
 	int n = WiFi.scanNetworks();
 
@@ -782,6 +786,8 @@ void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *
 	values += "connectionstate|" + state + "|div\n";
 	values += "networks|" + Networks + "|div\n";
 	request->send(200, "text/plain", values);
+	values = "";
+	Networks = "";
 	DEBUGLOG(__FUNCTION__);
 	DEBUGLOG("\r\n");
 }
@@ -1473,7 +1479,7 @@ void AsyncFSWebServer::serverInit() {
 		json = String();
 	});
 	//server.begin(); --> Not here
-	DEBUGLOG("HTTP server started");
+	DEBUGLOG("HTTP server started\r\n");
 }
 
 bool AsyncFSWebServer::checkAuth(AsyncWebServerRequest *request) {
