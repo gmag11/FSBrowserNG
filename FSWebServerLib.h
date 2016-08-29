@@ -74,7 +74,8 @@ protected:
 	Ticker _secondTk;
 	bool _secondFlag;
 
-	AsyncWebSocket* _ws;
+	AsyncWebSocket _ws = AsyncWebSocket("/ws");
+	//AsyncWebSocket* _ws;
 
 	void secondTask();
 	void sendTimeData();

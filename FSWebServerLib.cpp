@@ -38,7 +38,7 @@ void AsyncFSWebServer::secondTick()
 }
 
 void AsyncFSWebServer::secondTask() {
-	DEBUGLOG(NTP.getTimeDateString().c_str());
+	//DEBUGLOG("%s\r\n", NTP.getTimeDateString().c_str());
 	sendTimeData();
 }
 
@@ -49,12 +49,15 @@ void AsyncFSWebServer::s_secondTick(void* arg) {
 
 void AsyncFSWebServer::sendTimeData() {
 	String time = "T" + NTP.getTimeStr();
-	_ws->textAll(time);
+	_ws.textAll(time);
 	String date = "D" + NTP.getDateStr();
-	_ws->textAll(date);
+	_ws.textAll(date);
 	String sync = "S" + NTP.getTimeDateString(NTP.getLastNTPSync());
-	_ws->textAll(sync);
-	DEBUGLOG(__PRETTY_FUNCTION__);
+	_ws.textAll(sync);
+	String uptime = "U" + NTP.getUptimeString();
+	_ws.textAll(uptime);
+	//DEBUGLOG(__PRETTY_FUNCTION__);
+	//DEBUGLOG("\r\n")
 }
 
 String formatBytes(size_t bytes) {
@@ -80,6 +83,7 @@ void AsyncFSWebServer::begin(FS* fs)
 #ifdef DEBUG
 	DBG_OUTPUT_PORT.setDebugOutput(true);
 #endif // DEBUG
+	// NTP client setup
 	if (CONNECTION_LED >= 0) {
 		pinMode(CONNECTION_LED, OUTPUT); // CONNECTION_LED pin defined as output
 	}
@@ -115,7 +119,10 @@ void AsyncFSWebServer::begin(FS* fs)
 	}
 	loadHTTPAuth();
 	//WIFI INIT
-
+	if (_config.updateNTPTimeEvery > 0) { // Enable NTP sync
+		NTP.begin(_config.ntpServerName, _config.timezone / 10, _config.daylight);
+		NTP.setInterval(15, _config.updateNTPTimeEvery * 60);
+	}
 	// Register wifi Event to control connection LED
 	onStationModeConnectedHandler = WiFi.onStationModeConnected([this](WiFiEventStationModeConnected data) {
 		this->onWiFiConnected(data);
@@ -141,15 +148,10 @@ void AsyncFSWebServer::begin(FS* fs)
 	DEBUGLOG("Flash chip size: %u\n", ESP.getFlashChipRealSize());
 	DEBUGLOG("Scketch size: %u\n", ESP.getSketchSize());
 	DEBUGLOG("Free flash space: %u\n", ESP.getFreeSketchSpace());
-	// NTP client setup
-	if (_config.updateNTPTimeEvery > 0) { // Enable NTP sync
-		NTP.setInterval(15, _config.updateNTPTimeEvery * 60);
-		NTP.begin(_config.ntpServerName, _config.timezone / 10, _config.daylight);
-	}
 
 	_secondTk.attach(1.0f, &AsyncFSWebServer::s_secondTick, static_cast<void*>(this)); // Task to run periodic things every second
-	AsyncWebSocket ws("/ws");
-	_ws = &ws;
+	//AsyncWebSocket ws = AsyncWebSocket("/ws");
+	//_ws = &ws;
 
 	AsyncWebServer::begin();
 	serverInit(); // Configure and start Web server
@@ -538,8 +540,6 @@ void WiFiEvent(WiFiEvent_t event) {
 }*/
 
 void AsyncFSWebServer::handleFileList(AsyncWebServerRequest *request) {
-	//if (!checkAuth(request))
-		//return request->requestAuthentication();
 	if (!request->hasArg("dir")) { request->send(500, "text/plain", "BAD ARGS"); return; }
 
 	String path = request->arg("dir");
@@ -879,8 +879,6 @@ void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *re
 	DEBUGLOG(__FUNCTION__);
 	DEBUGLOG("\r\n");
 
-	if (!checkAuth(request))
-		return request->requestAuthentication();
 
 	if (request->args() > 0)  // Save Settings
 	{
@@ -1304,34 +1302,50 @@ void AsyncFSWebServer::serverInit() {
 		this->handleFileUpload(request, filename, index, data, len, final);
 	});
 	on("/admin/generalvalues", HTTP_GET, [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
 		this->send_general_configuration_values_html(request);
 	});
 	//on("/admin/generalvalues", HTTP_GET, std::bind(&AsyncFSWebServer::send_general_configuration_values_html, this, _1));
 	on("/admin/values", [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
 		this->send_network_configuration_values_html(request);
 	});
 	//on("/admin/values", std::bind(&AsyncFSWebServer::send_network_configuration_values_html, this, _1));
 	on("/admin/connectionstate", [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
 		this->send_connection_state_values_html(request);
 	});
 	//on("/admin/connectionstate", std::bind(&AsyncFSWebServer::send_connection_state_values_html, this, _1));
 	on("/admin/infovalues", [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
 		this->send_information_values_html(request);
 	});
 	//on("/admin/infovalues", std::bind(&AsyncFSWebServer::send_information_values_html, this, _1));
 	on("/admin/ntpvalues", [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
 		this->send_NTP_configuration_values_html(request);
 	});
 	//on("/admin/ntpvalues", std::bind(&AsyncFSWebServer::send_NTP_configuration_values_html, this, _1));
 	on("/config.html", [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
 		this->send_network_configuration_html(request);
 	});
 	//on("/config.html", std::bind(&AsyncFSWebServer::send_network_configuration_html, this, _1));
 	on("/general.html", [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
 		this->send_general_configuration_html(request);
 	});
 	//on("/general.html", std::bind(&AsyncFSWebServer::send_general_configuration_html, this, _1));
 	on("/ntp.html", [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
 		this->send_NTP_configuration_html(request);
 	});
 	//on("/ntp.html", std::bind(&AsyncFSWebServer::send_NTP_configuration_html, this, _1));
@@ -1388,11 +1402,6 @@ void AsyncFSWebServer::serverInit() {
 		this->updateFirmware(request, filename, index, data, len, final);
 	});
 
-	_ws->onEvent([this](AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length) {
-		this->webSocketEvent(server, client, type, arg, payload, length);
-	});
-
-	addHandler(_ws);
 
 	//called when the url is not defined here
 	//use it to load content from SPIFFS
@@ -1406,6 +1415,14 @@ void AsyncFSWebServer::serverInit() {
 		if (!this->handleFileRead(request->url(), request))
 			request->send(404, "text/plain", "FileNotFound");
 	});
+
+
+	_ws.onEvent([this](AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length) {
+		this->webSocketEvent(server, client, type, arg, payload, length);
+		DEBUGLOG("Websocket event: %d\r\n", type);
+	});
+
+	addHandler(&_ws);
 
 #define HIDE_SECRET
 #ifdef HIDE_SECRET

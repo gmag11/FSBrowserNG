@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <link rel="stylesheet" href="style.css" type="text/css" />
@@ -66,8 +66,13 @@
       <span id="x_ntp_sync"></span>
     </td>
   </tr>
-
-	<tr>
+  <tr>
+    <td align="right">Update:</td>
+    <td>
+       <span id="x_update"></span>
+    </td>
+  </tr>
+  <tr>
 		<td colspan="2" align="center">
 			<a href="javascript:GetState(); init()" class="btn btn--m btn--blue">Refresh</a>
 		</td>
@@ -144,6 +149,11 @@
                 var sync;
                 sync = evt.data.substring(1);
                 document.getElementById("x_ntp_sync").innerHTML = sync;
+            };
+            if (evt.data[0] == "U") {
+                var sync;
+                sync = evt.data.substring(1);
+                document.getElementById("x_update").innerHTML = sync;
             };
         };
         websocket.onerror = function (evt) {
