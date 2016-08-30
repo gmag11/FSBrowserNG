@@ -92,6 +92,8 @@ protected:
 	void onWiFiConnected(WiFiEventStationModeConnected data);
 	void onWiFiDisconnected(WiFiEventStationModeDisconnected data);
 
+	void onWiFiScanComplete(int numNetworks);
+
 	void secondTick();
 	static void s_secondTick(void* arg);
 

@@ -734,33 +734,22 @@ void AsyncFSWebServer::send_network_configuration_values_html(AsyncWebServerRequ
 	DEBUGLOG("\r\n");
 }
 
-void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *request)
-{
+void AsyncFSWebServer::onWiFiScanComplete(int numNetworks) {
+	String networks = "";
 
-	String state = "N/A";
-	String Networks = "";
-	if (WiFi.status() == 0) state = "Idle";
-	else if (WiFi.status() == 1) state = "NO SSID AVAILBLE";
-	else if (WiFi.status() == 2) state = "SCAN COMPLETED";
-	else if (WiFi.status() == 3) state = "CONNECTED";
-	else if (WiFi.status() == 4) state = "CONNECT FAILED";
-	else if (WiFi.status() == 5) state = "CONNECTION LOST";
-	else if (WiFi.status() == 6) state = "DISCONNECTED";
+	DEBUGLOG(__FUNCTION__);
+	DEBUGLOG("\r\n");
 
-	int n = WiFi.scanNetworks();
-
-	if (n == 0)
+	if (numNetworks == 0)
 	{
-		Networks = "<font color='#FF0000'>No networks found!</font>";
+		networks = "<font color='#FF0000'>No networks found!</font>";
 	}
 	else
 	{
-
-
-		Networks = "Found " + String(n) + " Networks<br>";
-		Networks += "<table border='0' cellspacing='0' cellpadding='3'>";
-		Networks += "<tr bgcolor='#DDDDDD' ><td><strong>Name</strong></td><td><strong>Quality</strong></td><td><strong>Enc</strong></td><tr>";
-		for (int i = 0; i < n; ++i)
+		networks = "Found " + String(numNetworks) + " Networks<br>\n";
+		networks += "<table border='0' cellspacing='0' cellpadding='3'>";
+		networks += "<tr bgcolor='#DDDDDD'><td><strong>Name</strong></td><td><strong>Quality</strong></td><td><strong>Enc</strong></td><tr>\n";
+		for (int i = 0; i < numNetworks; ++i)
 		{
 			int quality = 0;
 			if (WiFi.RSSI(i) <= -100)
@@ -777,15 +766,37 @@ void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *
 			}
 
 
-			Networks += "<tr><td><a href='javascript:selssid(\"" + String(WiFi.SSID(i)) + "\")'>" + String(WiFi.SSID(i)) + "</a></td><td>" + String(quality) + "%</td><td>" + String((WiFi.encryptionType(i) == ENC_TYPE_NONE) ? " " : "*") + "</td></tr>";
+			networks += "<tr><td><a href='javascript:selssid(\"" + String(WiFi.SSID(i)) + "\")'>" + String(WiFi.SSID(i)) + "</a></td><td>" + String(WiFi.RSSI(i)) + "%</td><td>" + String((WiFi.encryptionType(i) == ENC_TYPE_NONE) ? " " : "*") + "</td></tr>\n";
 		}
-		Networks += "</table>";
+		networks += "</table>\n";
 	}
+	WiFi.scanDelete();
+	DEBUGLOG(networks.c_str());
+}
+
+void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *request)
+{
+
+	String state = "N/A";
+	String Networks = "";
+	if (WiFi.status() == 0) state = "Idle";
+	else if (WiFi.status() == 1) state = "NO SSID AVAILBLE";
+	else if (WiFi.status() == 2) state = "SCAN COMPLETED";
+	else if (WiFi.status() == 3) state = "CONNECTED";
+	else if (WiFi.status() == 4) state = "CONNECT FAILED";
+	else if (WiFi.status() == 5) state = "CONNECTION LOST";
+	else if (WiFi.status() == 6) state = "DISCONNECTED";
+
+	WiFi.scanNetworksAsync([this](int n) {
+		DEBUGLOG("--Scan complete");
+		this->onWiFiScanComplete(n);
+	});
 
 	String values = "";
 	values += "connectionstate|" + state + "|div\n";
-	values += "networks|" + Networks + "|div\n";
+	values += "networks|Scanning networks ...|div\n";
 	request->send(200, "text/plain", values);
+	state = "";
 	values = "";
 	Networks = "";
 	DEBUGLOG(__FUNCTION__);
@@ -1212,6 +1223,7 @@ void AsyncFSWebServer::webSocketEvent(AsyncWebSocket * server, AsyncWebSocketCli
 
 	if (type == WS_EVT_DISCONNECT) {
 		DEBUGLOG("[%u] Disconnected!\r\n", client->id());
+		client->close();
 	}
 	else if (type == WS_EVT_CONNECT) {
 #ifdef DEBUG_DYNAMICDATA
