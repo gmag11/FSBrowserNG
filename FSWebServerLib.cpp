@@ -748,7 +748,7 @@ void AsyncFSWebServer::onWiFiScanComplete(int numNetworks) {
 	{
 		networks = "Found " + String(numNetworks) + " Networks<br>\n";
 		networks += "<table border='0' cellspacing='0' cellpadding='3'>";
-		networks += "<tr bgcolor='#DDDDDD'><td><strong>Name</strong></td><td><strong>Quality</strong></td><td><strong>Enc</strong></td><tr>\n";
+		networks += "<tr bgcolor='#DDDDDD'><td><strong>Name</strong></td><td><strong>Ch</strong></td><td><strong>Quality</strong></td><td><strong>Enc</strong></td><tr>\n";
 		for (int i = 0; i < numNetworks; ++i)
 		{
 			int quality = 0;
@@ -766,12 +766,15 @@ void AsyncFSWebServer::onWiFiScanComplete(int numNetworks) {
 			}
 
 
-			networks += "<tr><td><a href='javascript:selssid(\"" + String(WiFi.SSID(i)) + "\")'>" + String(WiFi.SSID(i)) + "</a></td><td>" + String(WiFi.RSSI(i)) + "%</td><td>" + String((WiFi.encryptionType(i) == ENC_TYPE_NONE) ? " " : "*") + "</td></tr>\n";
+			networks += "<tr><td><a href='javascript:selssid(\"" + String(WiFi.SSID(i)) + "\")'>" + String(WiFi.SSID(i)) + "</a></td><td>" + String(WiFi.channel(i)) + "</td><td>" + String(quality) + "%</td><td>" + String((WiFi.encryptionType(i) == ENC_TYPE_NONE) ? " " : "*") + "</td></tr>\n";
 		}
 		networks += "</table>\n";
 	}
 	WiFi.scanDelete();
-	DEBUGLOG(networks.c_str());
+	_evs.send(networks.c_str(),"networks");
+	//DEBUGLOG("%s\r\n", networks.c_str());
+	DEBUGLOG("Found %d networks\r\n", numNetworks);
+	DEBUGLOG("Message length %d bytes\r\n", networks.length());
 }
 
 void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *request)
@@ -1456,6 +1459,10 @@ void AsyncFSWebServer::serverInit() {
 	});
 
 	addHandler(&_ws);
+	addHandler(&_evs);
+	_evs.onConnect([](AsyncEventSourceClient* client) {
+		DEBUGLOG("Event source client connected from %s\r\n", client->client()->remoteIP().toString().c_str());
+	});
 
 #define HIDE_SECRET
 #ifdef HIDE_SECRET

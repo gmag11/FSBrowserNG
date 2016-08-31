@@ -52,10 +52,10 @@
 	<hr>
 	<strong>Networks:</strong>
 	<br>
-	<table border="0"  cellspacing="3" style="width:310px" >
+	<table border="0"  cellspacing="3" style="width:370px" >
 		<tr>
 			<td>
-				<div id="networks">Scanning...</div>
+				<div id="networks">Scanning networks...</div>
 			</td>
 		</tr>
 		<tr>
@@ -107,9 +107,31 @@
 				document.getElementsByTagName("head")[0].appendChild(a)
 			}
 		}
-
-
-
-
 	</script>
+    <script language="javascript" type="text/javascript">
+    function initEvt() {
+        startEvents();
+    }
+
+    function startEvents() {
+        var evs = new EventSource('/events');
+        evs.onopen = function (evt) {
+            console.log("Event source connected");
+        };
+        evs.onerror = function (evt) {
+            if (evt.target.readyState != EventSource.OPEN) {
+                console.log("Event source disconnected. Error: " + evt.data);
+            }
+        };
+        evs.onmessage = function (evt) {
+            console.log("Event " + evt.data);
+        };
+        evs.addEventListener('networks', function (evt) {
+            document.getElementById("networks").innerHTML = evt.data;
+        }, false);
+    }
+
+    window.addEventListener("load", initEvt, true);
+</script>
+
 

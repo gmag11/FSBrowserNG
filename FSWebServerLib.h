@@ -75,7 +75,7 @@ protected:
 	bool _secondFlag;
 
 	AsyncWebSocket _ws = AsyncWebSocket("/ws");
-	//AsyncWebSocket* _ws;
+	AsyncEventSource _evs = AsyncEventSource("/events");
 
 	void secondTask();
 	void sendTimeData();
