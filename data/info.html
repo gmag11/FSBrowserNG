@@ -124,53 +124,42 @@
 
 </script>
 <script language="javascript" type="text/javascript">
-    var wsUri = "ws://"+location.host+"/ws";
-    //var wsUri = "ws://192.168.5.15:81/";
-    var output;
-
-    function init() {
-        testWebSocket();
+    function initEvt() {
+        startEvents();
     }
 
-    function testWebSocket() {
-        websocket = new WebSocket(wsUri);
-        websocket.onopen = function (evt) {
-            console.log("CONNECTED");
+    function startEvents() {
+        var evs = new EventSource('/events');
+        evs.onopen = function (evt) {
+            console.log("Event source connected");
         };
-        websocket.onclose = function (evt) {
-            console.log("DISCONNECTED");
+
+        evs.onerror = function (evt) {
+            if (evt.target.readyState != EventSource.OPEN) {
+                console.log("Event source disconnected. Error: " + evt.data);
+            }
         };
-        websocket.onmessage = function (evt) {
-            if (evt.data[0] == "T") {
-                var time;
-                time = evt.data.substring(1);
-                document.getElementById("x_ntp_time").innerHTML = time;
-            };
-            if (evt.data[0] == "D") {
-                var date;
-                date = evt.data.substring(1);
-                document.getElementById("x_ntp_date").innerHTML = date;
-            };
-            if (evt.data[0] == "S") {
-                var sync;
-                sync = evt.data.substring(1);
-                document.getElementById("x_ntp_sync").innerHTML = sync;
-            };
-            if (evt.data[0] == "U") {
-                var sync;
-                sync = evt.data.substring(1);
-                document.getElementById("x_uptime").innerHTML = sync;
-            };
-            if (evt.data[0] == "B") {
-                var sync;
-                sync = evt.data.substring(1);
-                document.getElementById("x_last_boot").innerHTML = sync;
-            };
+
+        evs.onmessage = function (evt) {
+            console.log("Event " + evt.data);
         };
-        websocket.onerror = function (evt) {
-            console.log("ERROR: " + evt.data);
-        };
+
+        evs.addEventListener('time', function (evt) {
+            document.getElementById("x_ntp_time").innerHTML = evt.data;
+        }, false);
+        evs.addEventListener('date', function (evt) {
+            document.getElementById("x_ntp_date").innerHTML = evt.data;
+        }, false);
+        evs.addEventListener('lastSync', function (evt) {
+            document.getElementById("x_ntp_sync").innerHTML = evt.data;
+        }, false);
+        evs.addEventListener('uptime', function (evt) {
+            document.getElementById("x_uptime").innerHTML = evt.data;
+        }, false);
+        evs.addEventListener('lastBoot', function (evt) {
+            document.getElementById("x_last_boot").innerHTML = evt.data;
+        }, false);
     }
 
-    window.addEventListener("load", init, true);
+    window.addEventListener('load', initEvt, true);
 </script>

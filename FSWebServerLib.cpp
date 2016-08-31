@@ -32,38 +32,30 @@ Please Wait....Configuring and Restarting.
 
 AsyncFSWebServer::AsyncFSWebServer(uint16_t port) : AsyncWebServer(port) {}
 
-void AsyncFSWebServer::secondTick()
+/*void AsyncFSWebServer::secondTick()
 {
 	_secondFlag = true;
-}
+}*/
 
-void AsyncFSWebServer::secondTask() {
+/*void AsyncFSWebServer::secondTask() {
 	//DEBUGLOG("%s\r\n", NTP.getTimeDateString().c_str());
 	sendTimeData();
-}
+}*/
 
 void AsyncFSWebServer::s_secondTick(void* arg) {
 	AsyncFSWebServer* self = reinterpret_cast<AsyncFSWebServer*>(arg);
-	self->secondTask();
+	if (self->_evs.count() > 0) {
+		self->sendTimeData();
+	}
 }
 
 void AsyncFSWebServer::sendTimeData() {
-	String str = "";
-	str = "T" + NTP.getTimeStr();
-	_ws.textAll(str);
-	str = "";
-	str = "D" + NTP.getDateStr();
-	_ws.textAll(str);
-	str = "";
-	str = "S" + NTP.getTimeDateString(NTP.getLastNTPSync());
-	_ws.textAll(str);
-	str = "";
-	str = "U" + NTP.getUptimeString();
-	_ws.textAll(str);
-	str = "";
-	str = "B" + NTP.getTimeDateString(NTP.getLastBootTime());
-	_ws.textAll(str);
-	str = "";
+	_evs.send(NTP.getTimeStr().c_str(), "time");
+	_evs.send(NTP.getDateStr().c_str(), "date");
+	_evs.send(NTP.getTimeDateString(NTP.getLastNTPSync()).c_str(), "lastSync");
+	_evs.send(NTP.getUptimeString().c_str(), "uptime");
+	_evs.send(NTP.getTimeDateString(NTP.getLastBootTime()).c_str(), "lastBoot");
+	DEBUGLOG("%s\r\n", NTP.getTimeDateString().c_str());
 	//DEBUGLOG(__PRETTY_FUNCTION__);
 	//DEBUGLOG("\r\n")
 }
@@ -171,8 +163,6 @@ void AsyncFSWebServer::begin(FS* fs)
 	DEBUGLOG("Free flash space: %u\r\n", ESP.getFreeSketchSpace());
 
 	_secondTk.attach(1.0f, &AsyncFSWebServer::s_secondTick, static_cast<void*>(this)); // Task to run periodic things every second
-	//AsyncWebSocket ws = AsyncWebSocket("/ws");
-	//_ws = &ws;
 
 	AsyncWebServer::begin();
 	serverInit(); // Configure and start Web server
@@ -379,10 +369,6 @@ bool AsyncFSWebServer::loadHTTPAuth() {
 	json.prettyPrintTo(temp);
 	DBG_OUTPUT_PORT.println(temp);
 #endif
-	//memset(config.ssid, 0, 28);
-	//memset(config.pass, 0, 50);
-	//String("Virus_Detected!!!").toCharArray(config.ssid, 28); // Assign WiFi SSID
-	//String("LaJunglaSigloXX1@.").toCharArray(config.pass, 50); // Assign WiFi PASS
 
 	_httpAuth.auth = json["auth"];
 	_httpAuth.wwwUsername = json["user"].asString();
@@ -403,10 +389,6 @@ bool AsyncFSWebServer::loadHTTPAuth() {
 
 void AsyncFSWebServer::handle()
 {
-	if (_secondFlag) { // Run periodic tasks
-		_secondFlag = false;
-		secondTask();
-	}
 	ArduinoOTA.handle();
 }
 
@@ -518,39 +500,6 @@ void AsyncFSWebServer::onWiFiDisconnected(WiFiEventStationModeDisconnected data)
 	}
 	DEBUGLOG("\r\nDisconnected for %d seconds\r\n", (int)((millis() - wifiDisconnectedSince) / 1000));
 }
-
-/*
-void WiFiEvent(WiFiEvent_t event) {
-	static long wifiDisconnectedSince = 0;
-
-	switch (event) {
-	case WIFI_EVENT_STAMODE_GOT_IP:
-		//DBG_OUTPUT_PORT.println(event);
-		if (CONNECTION_LED >= 0) {
-			digitalWrite(CONNECTION_LED, LOW); // Turn LED on
-		}
-		//DBG_OUTPUT_PORT.printf("Led %s on\n", CONNECTION_LED);
-		//turnLedOn();
-		wifiDisconnectedSince = 0;
-		//currentWifiStatus = WIFI_STA_CONNECTED;
-		break;
-	case WIFI_EVENT_STAMODE_DISCONNECTED:
-#ifdef DEBUG_GLOBALH
-		DBG_OUTPUT_PORT.println("case STA_DISCONNECTED");
-#endif // DEBUG_GLOBALH
-		if (CONNECTION_LED >= 0) {
-			digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
-		}
-		//DBG_OUTPUT_PORT.printf("Led %s off\n", CONNECTION_LED);
-		//flashLED(config.connectionLed, 2, 100);
-		if (wifiDisconnectedSince == 0) {
-			wifiDisconnectedSince = millis();
-		}
-#ifdef DEBUG
-		DBG_OUTPUT_PORT.printf("Disconnected for %d seconds\n", (int)((millis() - wifiDisconnectedSince) / 1000));
-#endif // DEBUG
-	}
-}*/
 
 void AsyncFSWebServer::handleFileList(AsyncWebServerRequest *request) {
 	if (!request->hasArg("dir")) { request->send(500, "text/plain", "BAD ARGS"); return; }
@@ -666,6 +615,7 @@ void AsyncFSWebServer::handleFileDelete(AsyncWebServerRequest *request) {
 
 void AsyncFSWebServer::handleFileUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
 	static File fsUploadFile;
+	static size_t fileSize = 0;
 	
 	if (!index) { // Start
 		DEBUGLOG("handleFileUpload Name: %s\r\n", filename.c_str());
@@ -680,6 +630,8 @@ void AsyncFSWebServer::handleFileUpload(AsyncWebServerRequest *request, String f
 		if (fsUploadFile.write(data, len) != len) {
 			DBG_OUTPUT_PORT.println("Write error during upload");
 		}
+		else
+			fileSize += len;
 	}
 	/*for (size_t i = 0; i < len; i++) {
 		if (fsUploadFile)
@@ -689,7 +641,8 @@ void AsyncFSWebServer::handleFileUpload(AsyncWebServerRequest *request, String f
 		if (fsUploadFile) {
 			fsUploadFile.close();
 		}
-		DEBUGLOG("handleFileUpload Size: %u\n", len);
+		DEBUGLOG("handleFileUpload Size: %u\n", fileSize);
+		fileSize = 0;
 	}
 }
 
@@ -1222,6 +1175,7 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
 	//delay(2);
 }
 
+/*
 void AsyncFSWebServer::webSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length) {
 
 	if (type == WS_EVT_DISCONNECT) {
@@ -1303,7 +1257,7 @@ void AsyncFSWebServer::webSocketEvent(AsyncWebSocket * server, AsyncWebSocketCli
 	}
 
 }
-
+*/
 
 void AsyncFSWebServer::serverInit() {
 	//SERVER INIT
@@ -1452,17 +1406,10 @@ void AsyncFSWebServer::serverInit() {
 		delete response; // Free up memory!
 	});
 
-
-	_ws.onEvent([this](AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length) {
-		this->webSocketEvent(server, client, type, arg, payload, length);
-		DEBUGLOG("Websocket event: %d\r\n", type);
-	});
-
-	addHandler(&_ws);
-	addHandler(&_evs);
 	_evs.onConnect([](AsyncEventSourceClient* client) {
 		DEBUGLOG("Event source client connected from %s\r\n", client->client()->remoteIP().toString().c_str());
 	});
+	addHandler(&_evs);
 
 #define HIDE_SECRET
 #ifdef HIDE_SECRET

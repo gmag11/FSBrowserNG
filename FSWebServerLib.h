@@ -74,10 +74,8 @@ protected:
 	Ticker _secondTk;
 	bool _secondFlag;
 
-	AsyncWebSocket _ws = AsyncWebSocket("/ws");
 	AsyncEventSource _evs = AsyncEventSource("/events");
 
-	void secondTask();
 	void sendTimeData();
 	bool load_config();
 	void defaultConfig();
@@ -94,7 +92,6 @@ protected:
 
 	void onWiFiScanComplete(int numNetworks);
 
-	void secondTick();
 	static void s_secondTick(void* arg);
 
 	String getMacAddress();
@@ -120,7 +117,6 @@ protected:
 	void send_update_firmware_values_html(AsyncWebServerRequest *request);
 	void setUpdateMD5(AsyncWebServerRequest *request);
 	void updateFirmware(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
-	void webSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length);
 
 	static String urldecode(String input); // (based on https://code.google.com/p/avr-netino/)
 	static unsigned char h2int(char c);
