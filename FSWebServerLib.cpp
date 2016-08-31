@@ -687,6 +687,7 @@ void AsyncFSWebServer::send_network_configuration_values_html(AsyncWebServerRequ
 	DEBUGLOG("\r\n");
 }
 
+/*
 void AsyncFSWebServer::onWiFiScanComplete(int numNetworks) {
 	String networks = "";
 
@@ -729,6 +730,54 @@ void AsyncFSWebServer::onWiFiScanComplete(int numNetworks) {
 	DEBUGLOG("Found %d networks\r\n", numNetworks);
 	DEBUGLOG("Message length %d bytes\r\n", networks.length());
 }
+*/
+
+void AsyncFSWebServer::onWiFiScanComplete(int numNetworks) {
+	String networks = "{[";
+	//networks += String(numNetworks);
+
+	DEBUGLOG(__FUNCTION__);
+	DEBUGLOG("\r\n");
+
+	if (numNetworks > 0)
+	
+	{
+		for (int i = 0; i < numNetworks; ++i)
+		{
+			/*int quality = 0;
+			if (WiFi.RSSI(i) <= -100)
+			{
+				quality = 0;
+			}
+			else if (WiFi.RSSI(i) >= -50)
+			{
+				quality = 100;
+			}
+			else
+			{
+				quality = 2 * (WiFi.RSSI(i) + 100);
+			}*/
+
+			if(i)
+				networks += ",";
+			networks += "{";
+			networks += "\"rssi\":" + String(WiFi.RSSI(i));
+			networks += ",\"ssid\":\"" + WiFi.SSID(i) + "\"";
+			networks += ",\"bssid\":\"" + WiFi.BSSIDstr(i) + "\"";
+			networks += ",\"channel\":" + String(WiFi.channel(i));
+			networks += ",\"secure\":" + String(WiFi.encryptionType(i));
+			networks += ",\"hidden\":" + String(WiFi.isHidden(i) ? "true" : "false");
+			networks += "}";
+		}
+	}
+	WiFi.scanDelete();
+	networks += "]}";
+	_evs.send(networks.c_str(), "networks");
+	DEBUGLOG("%s\r\n", networks.c_str());
+	DEBUGLOG("Found %d networks\r\n", numNetworks);
+	DEBUGLOG("Message length %d bytes\r\n", networks.length());
+}
+
 
 void AsyncFSWebServer::send_connection_state_values_html(AsyncWebServerRequest *request)
 {
