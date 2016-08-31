@@ -58,7 +58,7 @@
 <strong>Connection State:</strong>
 <div id="connectionstate">N/A</div>
 <hr>
-<strong>Networks:</strong>
+<strong>Networks: </strong><span id="numNets"></span>
 <br>
 <table border="0" cellspacing="3" style="width:370px">
     <tr>
@@ -66,7 +66,6 @@
             <table>
                 <thead bgcolor='#DDDDDD'>
                     <tr>
-                        <th>&nbsp;&nbsp;&nbsp;</th>
                         <th style="width:200px">SSID</th>
                         <th>Channel</th>
                         <th style="width:80px">Secure</th>
@@ -113,11 +112,12 @@
         array = JSON.parse(res.target.responseText);
         array.sort(function (a, b) { return a.rssi - b.rssi });
         array.reverse();
+        document.getElementById("numNets").innerHTML = array.length;
         var table = document.getElementById("networks");
         table.innerHTML = "";
         for (var i = 0; i < array.length; i++) {
             var row = document.createElement("tr");
-            row.innerHTML = "<td>" + (i + 1) + "</td><td>" + array[i].ssid + "</td><td>" + array[i].channel + "</td><td>" + securityStr(array[i].secure) + "</td><td>" + array[i].rssi + "</td>";
+            row.innerHTML = "<td><a href='javascript:selssid(\"" + array[i].ssid + "\")'>" + array[i].ssid + "</td><td>" + array[i].channel + "</td><td>" + securityStr(array[i].secure) + "</td><td>" + array[i].rssi + "</td>";
             table.appendChild(row);
         }
     }

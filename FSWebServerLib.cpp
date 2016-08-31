@@ -1129,90 +1129,6 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
 	//delay(2);
 }
 
-/*
-void AsyncFSWebServer::webSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *payload, size_t length) {
-
-	if (type == WS_EVT_DISCONNECT) {
-		DEBUGLOG("[%u] Disconnected!\r\n", client->id());
-		client->close();
-	}
-	else if (type == WS_EVT_CONNECT) {
-#ifdef DEBUG_DYNAMICDATA
-		wsNumber = client->id();
-		IPAddress ip = client->remoteIP();
-		DEBUGLOG("[%u] Connected from %d.%d.%d.%d url: %s\r\n", client->id(), ip[0], ip[1], ip[2], ip[3], payload);
-#endif // DEBUG_DYNAMICDATA
-
-		// send message to client
-		//wsServer.sendTXT(num, "Connected");
-	}
-	else if (type == WS_EVT_DATA) {
-		AwsFrameInfo * info = (AwsFrameInfo*)arg;
-		String msg = "";
-		if (info->final && info->index == 0 && info->len == length) {
-			//the whole message is in a single frame and we got all of it's data
-			if (info->opcode == WS_TEXT) {
-				for (size_t i = 0; i < info->len; i++) {
-					msg += (char)payload[i];
-				}
-			}
-			else { // Binary
-				char buff[3];
-				for (size_t i = 0; i < info->len; i++) {
-					sprintf(buff, "%02x ", (uint8_t)payload[i]);
-					msg += buff;
-				}
-			}
-			DEBUGLOG("ws[%s][%u] %s-message[%llu]: ", server->url(), client->id(), (info->opcode == WS_TEXT) ? "text" : "binary", info->len);
-			DEBUGLOG("%s\r\n", msg.c_str());
-		}
-		else {
-			//message is comprised of multiple frames or the frame is split into multiple packets
-			if (info->index == 0) { // Message start
-				if (info->num == 0)
-					DBG_OUTPUT_PORT.printf("ws[%s][%u] %s-message start\n", server->url(), client->id(), (info->message_opcode == WS_TEXT) ? "text" : "binary");
-				DBG_OUTPUT_PORT.printf("ws[%s][%u] frame[%u] start[%llu]\n", server->url(), client->id(), info->num, info->len);
-			}
-			// Continue message
-			DBG_OUTPUT_PORT.printf("ws[%s][%u] frame[%u] %s[%llu - %llu]: ", server->url(), client->id(), info->num, (info->message_opcode == WS_TEXT) ? "text" : "binary", info->index, info->index + length);
-
-			if (info->opcode == WS_TEXT) { // Text
-				for (size_t i = 0; i < info->len; i++) {
-					msg += (char)payload[i];
-				}
-			}
-			else { // Binary
-				char buff[3];
-				for (size_t i = 0; i < info->len; i++) {
-					sprintf(buff, "%02x ", (uint8_t)payload[i]);
-					msg += buff;
-				}
-			}
-			DBG_OUTPUT_PORT.printf("%s\r\n", msg.c_str());
-
-			if ((info->index + length) == info->len) { // Message end
-				DBG_OUTPUT_PORT.printf("ws[%s][%u] frame[%u] end[%llu]\n", server->url(), client->id(), info->num, info->len);
-				if (info->final) {
-					DBG_OUTPUT_PORT.printf("ws[%s][%u] %s-message end\n", server->url(), client->id(), (info->message_opcode == WS_TEXT) ? "text" : "binary");
-					if (info->message_opcode == WS_TEXT)
-						client->text("I got your text message");
-					else
-						client->binary("I got your binary message");
-				}
-			}
-		}
-		// send message to client
-		//client->text("message here");
-
-		// send data to all connected clients
-		//client->message();
-		// webSocket.broadcastTXT("message here");
-
-	}
-
-}
-*/
-
 void AsyncFSWebServer::serverInit() {
 	//SERVER INIT
 	//list directory
@@ -1249,31 +1165,26 @@ void AsyncFSWebServer::serverInit() {
 			return request->requestAuthentication();
 		this->send_general_configuration_values_html(request);
 	});
-	//on("/admin/generalvalues", HTTP_GET, std::bind(&AsyncFSWebServer::send_general_configuration_values_html, this, _1));
 	on("/admin/values", [this](AsyncWebServerRequest *request) {
 		if (!this->checkAuth(request))
 			return request->requestAuthentication();
 		this->send_network_configuration_values_html(request);
 	});
-	//on("/admin/values", std::bind(&AsyncFSWebServer::send_network_configuration_values_html, this, _1));
 	on("/admin/connectionstate", [this](AsyncWebServerRequest *request) {
 		if (!this->checkAuth(request))
 			return request->requestAuthentication();
 		this->send_connection_state_values_html(request);
 	});
-	//on("/admin/connectionstate", std::bind(&AsyncFSWebServer::send_connection_state_values_html, this, _1));
 	on("/admin/infovalues", [this](AsyncWebServerRequest *request) {
 		if (!this->checkAuth(request))
 			return request->requestAuthentication();
 		this->send_information_values_html(request);
 	});
-	//on("/admin/infovalues", std::bind(&AsyncFSWebServer::send_information_values_html, this, _1));
 	on("/admin/ntpvalues", [this](AsyncWebServerRequest *request) {
 		if (!this->checkAuth(request))
 			return request->requestAuthentication();
 		this->send_NTP_configuration_values_html(request);
 	});
-	//on("/admin/ntpvalues", std::bind(&AsyncFSWebServer::send_NTP_configuration_values_html, this, _1));
 	on("/config.html", [this](AsyncWebServerRequest *request) {
 		if (!this->checkAuth(request))
 			return request->requestAuthentication();
@@ -1282,7 +1193,7 @@ void AsyncFSWebServer::serverInit() {
 	on("/scan", HTTP_GET, [](AsyncWebServerRequest *request) {
 		String json = "[";
 		int n = WiFi.scanComplete();
-		if (n == -2) {
+		if (n == WIFI_SCAN_FAILED) {
 			WiFi.scanNetworks(true);
 		}
 		else if (n) {
@@ -1298,28 +1209,24 @@ void AsyncFSWebServer::serverInit() {
 				json += "}";
 			}
 			WiFi.scanDelete();
-			if (WiFi.scanComplete() == -2) {
+			if (WiFi.scanComplete() == WIFI_SCAN_FAILED) {
 				WiFi.scanNetworks(true);
 			}
 		}
 		json += "]";
 		request->send(200, "text/json", json);
-		json = String();
+		json = "";
 	});
-	//on("/config.html", std::bind(&AsyncFSWebServer::send_network_configuration_html, this, _1));
 	on("/general.html", [this](AsyncWebServerRequest *request) {
 		if (!this->checkAuth(request))
 			return request->requestAuthentication();
 		this->send_general_configuration_html(request);
 	});
-	//on("/general.html", std::bind(&AsyncFSWebServer::send_general_configuration_html, this, _1));
 	on("/ntp.html", [this](AsyncWebServerRequest *request) {
 		if (!this->checkAuth(request))
 			return request->requestAuthentication();
 		this->send_NTP_configuration_html(request);
 	});
-	//on("/ntp.html", std::bind(&AsyncFSWebServer::send_NTP_configuration_html, this, _1));
-	//server.on("/admin/devicename", send_devicename_value_html);
 	on("/admin/restart", [this](AsyncWebServerRequest *request) {
 		DBG_OUTPUT_PORT.println(request->url());
 		if (!this->checkAuth(request))

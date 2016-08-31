@@ -90,8 +90,6 @@ protected:
 	void onWiFiConnected(WiFiEventStationModeConnected data);
 	void onWiFiDisconnected(WiFiEventStationModeDisconnected data);
 
-	void onWiFiScanComplete(int numNetworks);
-
 	static void s_secondTick(void* arg);
 
 	String getMacAddress();
