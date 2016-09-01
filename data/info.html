@@ -80,7 +80,7 @@
   </tr>
   <tr>
 		<td colspan="2" align="center">
-			<a href="javascript:GetState(); init()" class="btn btn--m btn--blue">Refresh</a>
+			<a href="javascript:GetState(); initEvt()" class="btn btn--m btn--blue">Refresh</a>
 		</td>
 	</tr>
 </table>
@@ -143,21 +143,13 @@
         evs.onmessage = function (evt) {
             console.log("Event " + evt.data);
         };
-
-        evs.addEventListener('time', function (evt) {
-            document.getElementById("x_ntp_time").innerHTML = evt.data;
-        }, false);
-        evs.addEventListener('date', function (evt) {
-            document.getElementById("x_ntp_date").innerHTML = evt.data;
-        }, false);
-        evs.addEventListener('lastSync', function (evt) {
-            document.getElementById("x_ntp_sync").innerHTML = evt.data;
-        }, false);
-        evs.addEventListener('uptime', function (evt) {
-            document.getElementById("x_uptime").innerHTML = evt.data;
-        }, false);
-        evs.addEventListener('lastBoot', function (evt) {
-            document.getElementById("x_last_boot").innerHTML = evt.data;
+        evs.addEventListener('timeDate', function (evt) {
+            var jsonTimeDate = JSON.parse(evt.data);
+            document.getElementById("x_ntp_time").innerHTML = jsonTimeDate.time;
+            document.getElementById("x_ntp_date").innerHTML = jsonTimeDate.date;
+            document.getElementById("x_ntp_sync").innerHTML = jsonTimeDate.lastSync;
+            document.getElementById("x_uptime").innerHTML = jsonTimeDate.uptime;
+            document.getElementById("x_last_boot").innerHTML = jsonTimeDate.lastBoot;
         }, false);
     }
 

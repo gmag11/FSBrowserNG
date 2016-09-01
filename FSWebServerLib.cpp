@@ -50,12 +50,17 @@ void AsyncFSWebServer::s_secondTick(void* arg) {
 }
 
 void AsyncFSWebServer::sendTimeData() {
-	_evs.send(NTP.getTimeStr().c_str(), "time");
-	_evs.send(NTP.getDateStr().c_str(), "date");
-	_evs.send(NTP.getTimeDateString(NTP.getLastNTPSync()).c_str(), "lastSync");
-	_evs.send(NTP.getUptimeString().c_str(), "uptime");
-	_evs.send(NTP.getTimeDateString(NTP.getLastBootTime()).c_str(), "lastBoot");
+	String data = "{";
+	data += "\"time\":\"" + NTP.getTimeStr() + "\",";
+	data += "\"date\":\"" + NTP.getDateStr() + "\",";
+	data += "\"lastSync\":\"" + NTP.getTimeDateString(NTP.getLastNTPSync()) + "\",";
+	data += "\"uptime\":\"" + NTP.getUptimeString() + "\",";
+	data += "\"lastBoot\":\"" + NTP.getTimeDateString(NTP.getLastBootTime()) + "\"";
+	data += "}\r\n";
+	DEBUGLOG(data.c_str());
+	_evs.send(data.c_str(), "timeDate");
 	DEBUGLOG("%s\r\n", NTP.getTimeDateString().c_str());
+	data = String();
 	//DEBUGLOG(__PRETTY_FUNCTION__);
 	//DEBUGLOG("\r\n")
 }
