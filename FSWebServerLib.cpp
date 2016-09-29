@@ -2,11 +2,11 @@
 // 
 // 
 
-#define DEBUG
+//#define RELEASE
 
 #define DBG_OUTPUT_PORT Serial
 
-#ifdef DEBUG
+#ifndef RELEASE
 #define DEBUGLOG(...) DBG_OUTPUT_PORT.printf(__VA_ARGS__)
 #else
 #define DEBUGLOG(...)
@@ -98,9 +98,9 @@ void AsyncFSWebServer::begin(FS* fs)
 	_fs = fs;
 	DBG_OUTPUT_PORT.begin(115200);
 	DBG_OUTPUT_PORT.print("\n\n");
-#ifdef DEBUG
+#ifndef RELEASE
 	DBG_OUTPUT_PORT.setDebugOutput(true);
-#endif // DEBUG
+#endif // RELEASE
 	// NTP client setup
 	if (CONNECTION_LED >= 0) {
 		pinMode(CONNECTION_LED, OUTPUT); // CONNECTION_LED pin defined as output
@@ -119,7 +119,7 @@ void AsyncFSWebServer::begin(FS* fs)
 	}
 	if (!_fs) // If SPIFFS is not started
 		_fs->begin();
-#ifdef DEBUG
+#ifndef RELEASE
 	{ // List files
 		Dir dir = _fs->openDir("/");
 		while (dir.next()) {
@@ -130,7 +130,7 @@ void AsyncFSWebServer::begin(FS* fs)
 		}
 		DEBUGLOG("\n");
 	}
-#endif // DEBUG
+#endif // RELEASE
 	if (!load_config()) { // Try to load configuration from file system
 		defaultConfig(); // Load defaults if any error
 		_apConfig.APenable = true;
@@ -209,7 +209,7 @@ bool AsyncFSWebServer::load_config() {
 		DEBUGLOG("Failed to parse config file\r\n");
 		return false;
 	}
-#ifdef DEBUG
+#ifndef RELEASE
 	String temp;
 	json.prettyPrintTo(temp);
 	Serial.println(temp);
@@ -315,7 +315,7 @@ bool AsyncFSWebServer::save_config() {
 		return false;
 	}
 
-#ifdef DEBUG
+#ifndef RELEASE
 	String temp;
 	json.prettyPrintTo(temp);
 	Serial.println(temp);
@@ -360,20 +360,20 @@ bool AsyncFSWebServer::loadHTTPAuth() {
 	JsonObject& json = jsonBuffer.parseObject(buf.get());
 
 	if (!json.success()) {
-#ifdef DEBUG
+#ifndef RELEASE
 		String temp;
 		json.prettyPrintTo(temp);
 		DBG_OUTPUT_PORT.println(temp);
 		DBG_OUTPUT_PORT.println("Failed to parse secret file");
-#endif // DEBUG
+#endif // RELEASE
 		_httpAuth.auth = false;
 		return false;
 	}
-#ifdef DEBUG
+#ifndef RELEASE
 	String temp;
 	json.prettyPrintTo(temp);
 	DBG_OUTPUT_PORT.println(temp);
-#endif
+#endif // RELEASE
 
 	_httpAuth.auth = json["auth"];
 	_httpAuth.wwwUsername = json["user"].asString();
@@ -459,7 +459,7 @@ void AsyncFSWebServer::ConfigureOTA(String password) {
 		DEBUGLOG("OTA password set %s\n", password.c_str());
 	}
 
-#ifdef DEBUG
+#ifndef RELEASE
 	ArduinoOTA.onStart([]() {
 		DEBUGLOG("StartOTA\r\n");
 	});
@@ -479,7 +479,7 @@ void AsyncFSWebServer::ConfigureOTA(String password) {
 		else if (error == OTA_END_ERROR) DEBUGLOG("End Failed\r\n");
 	});
 	DEBUGLOG("\r\nOTA Ready\r\n");
-#endif // DEBUG
+#endif // RELEASE
 	ArduinoOTA.begin();
 }
 
@@ -1028,11 +1028,11 @@ bool AsyncFSWebServer::saveHTTPAuth() {
 		return false;
 	}
 
-#ifdef DEBUG
+#ifndef RELEASE
 	String temp;
 	json.prettyPrintTo(temp);
 	Serial.println(temp);
-#endif
+#endif // RELEASE
 
 	json.printTo(configFile);
 	configFile.flush();
