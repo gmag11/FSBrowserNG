@@ -52,10 +52,6 @@ AP Mode is also started when `loadConfig()` finds no config file (config.json). 
 
 WiFi connection to router is confirmed via LED on IO pin GPIO02 as soon an IP address is got. Same LED is used to confirm AP mode by flashing 3 times. LED ping can be configured in [FSWebServerlib.h](https://github.com/gmag11/FSBrowserNG/blob/master/FSWebServerLib.h#L34).
 
-##Schematics
-
-![Fritzing breadboard](https://github.com/gmag11/FSBrowser/blob/dev/Fritzing/ESPWebServer_bb_256.png)
-
 ##How to use it
 
 After compile and flash into ESP8266 you need to upload SPIFFS data using [download tool](https://github.com/esp8266/arduino-esp8266fs-plugin/releases/download/0.2.0/ESP8266FS-0.2.0.zip) for Arduino IDE. Check [SPIFFS doc](https://github.com/esp8266/Arduino/blob/master/doc/filesystem.md) for details.
