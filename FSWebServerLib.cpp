@@ -99,12 +99,14 @@ void AsyncFSWebServer::begin(FS* fs)
 	//analogWriteFreq(200);
 
 	if (AP_ENABLE_BUTTON >= 0) {
-		_apConfig.APenable = digitalRead(AP_ENABLE_BUTTON); // Read AP button
-	DEBUGLOG("AP Enable = %d\n", _apConfig.APenable);
+		_apConfig.APenable = digitalRead(AP_ENABLE_BUTTON); // Read AP button. If button is pressed activate AP
+	    DEBUGLOG("AP Enable = %d\n", _apConfig.APenable);
 	}
-	if (CONNECTION_LED >= 0) {
+
+    if (CONNECTION_LED >= 0) {
 		digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
 	}
+
 	if (!_fs) // If SPIFFS is not started
 		_fs->begin();
 #ifndef RELEASE
@@ -418,10 +420,11 @@ void AsyncFSWebServer::configureWifi()
 	//delay(2000);
 	//delay(5000); // Wait for WiFi
 	
-	while (!WL_CONNECTED) {
+	while (!WiFi.isConnected()) {
 		delay(1000);
-		Serial.print(".");
+        DBG_OUTPUT_PORT.print(".");
 	}
+    DBG_OUTPUT_PORT.println();
 	/*if (WiFi.isConnected()) {
 		currentWifiStatus = WIFI_STA_CONNECTED;
 	}*/
@@ -1276,7 +1279,7 @@ void AsyncFSWebServer::serverInit() {
 	//called when the url is not defined here
 	//use it to load content from SPIFFS
 	onNotFound([this](AsyncWebServerRequest *request) {
-		DBG_OUTPUT_PORT.printf("Not found: %s\r\n", request->url().c_str());
+		DEBUGLOG("Not found: %s\r\n", request->url().c_str());
 		if (!this->checkAuth(request))
 			return request->requestAuthentication();
 		AsyncWebServerResponse *response = request->beginResponse(200);

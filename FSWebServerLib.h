@@ -31,8 +31,8 @@
 #define DEBUGLOG(...)
 #endif
 
-#define CONNECTION_LED 2 // Connection LED pin (Built in)
-#define AP_ENABLE_BUTTON 4 // Button pin to enable AP during startup for configuration
+#define CONNECTION_LED 2 // Connection LED pin (Built in). -1 to disable
+#define AP_ENABLE_BUTTON 4 // Button pin to enable AP during startup for configuration. -1 to disable
 
 
 #define CONFIG_FILE "/config.json"
