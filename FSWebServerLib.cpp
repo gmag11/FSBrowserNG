@@ -94,12 +94,12 @@ void AsyncFSWebServer::begin(FS* fs)
 		pinMode(CONNECTION_LED, OUTPUT); // CONNECTION_LED pin defined as output
 	}
 	if (AP_ENABLE_BUTTON >= 0) {
-		pinMode(AP_ENABLE_BUTTON, INPUT); // If this pin is HIGH during startup ESP will run in AP_ONLY mode. Backdoor to change WiFi settings when configured WiFi is not available.
+		pinMode(AP_ENABLE_BUTTON, INPUT_PULLUP); // If this pin is HIGH during startup ESP will run in AP_ONLY mode. Backdoor to change WiFi settings when configured WiFi is not available.
 	}
 	//analogWriteFreq(200);
 
 	if (AP_ENABLE_BUTTON >= 0) {
-		_apConfig.APenable = digitalRead(AP_ENABLE_BUTTON); // Read AP button. If button is pressed activate AP
+		_apConfig.APenable = !digitalRead(AP_ENABLE_BUTTON); // Read AP button. If button is pressed activate AP
 	    DEBUGLOG("AP Enable = %d\n", _apConfig.APenable);
 	}
 
