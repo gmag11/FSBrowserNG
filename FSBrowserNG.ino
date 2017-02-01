@@ -12,17 +12,15 @@
 #include "FSWebServerLib.h"
 #include <Hash.h>
 
-void setup()
-{
-	// WiFi is started inside library
-	SPIFFS.begin(); // Not really needed, checked inside library and started if needed
-	ESPHTTPServer.begin(&SPIFFS);
-	/* add setup code here */
+void setup() {
+    // WiFi is started inside library
+    SPIFFS.begin(); // Not really needed, checked inside library and started if needed
+    ESPHTTPServer.begin(&SPIFFS);
+    /* add setup code here */
 }
 
-void loop()
-{
-	/* add main program code here */
+void loop() {
+    /* add main program code here */
 
-	ESPHTTPServer.handle();	// Send websocket data to web browser
+    ESPHTTPServer.handle();	// Send websocket data to web browser
 }
