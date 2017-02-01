@@ -54,12 +54,16 @@ WiFi connection to router is confirmed via LED on IO pin GPIO02 as soon an IP ad
 
 ##How to use it
 
-After compile and flash into ESP8266 you need to upload SPIFFS data using [download tool](https://github.com/esp8266/arduino-esp8266fs-plugin/releases/download/0.2.0/ESP8266FS-0.2.0.zip) for Arduino IDE. Check [SPIFFS doc](https://github.com/esp8266/Arduino/blob/master/doc/filesystem.md) for details.
+After compile and flash into ESP8266 you need to upload SPIFFS data using [download tool](https://github.com/esp8266/arduino-esp8266fs-plugin) for Arduino IDE. Check [SPIFFS doc](https://github.com/esp8266/Arduino/blob/master/doc/filesystem.md) for details.
 
 * `http://ip_address/admin.html` takes you to main configuration GUI.
 * `http://ip_address/edit` contains code editor. Any file stored in SPIFFS may be loaded here and saved using `CTRL+S` command.
 * `http://ip_address/update` allows remote update through WEB.
 * `http://ip_address/` includes an example info page that shows how to get realtime data from ESP. You may change this to adapt to your project.
+
+You may add your own files to SPIFFS to be served by ESP8266. You only need to add some code if you need dynamic data.
+
+FSBrowserNG extends AsyncWebServer class. So, you may use all its methods as usual.
 
 ##Dependances
 
