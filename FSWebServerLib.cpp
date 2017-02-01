@@ -239,7 +239,7 @@ void AsyncFSWebServer::defaultConfig() {
 	// DEFAULT CONFIG
 	_config.ssid = "YOUR_DEFAULT_WIFI_SSID";
 	_config.password = "YOUR_DEFAULT_WIFI_PASSWD";
-	_config.dhcp = true;
+	_config.dhcp = 1;
 	_config.ip = IPAddress(192, 168, 1, 4);
 	_config.netmask = IPAddress(255, 255, 255, 0);
 	_config.gateway = IPAddress(192, 168, 1, 1);
@@ -247,7 +247,7 @@ void AsyncFSWebServer::defaultConfig() {
 	_config.ntpServerName = "pool.ntp.org";
 	_config.updateNTPTimeEvery = 15;
 	_config.timezone = 10;
-	_config.daylight = true;
+	_config.daylight = 1;
 	_config.deviceName = "ESP8266fs";
 	//config.connectionLed = CONNECTION_LED;
 	save_config();
