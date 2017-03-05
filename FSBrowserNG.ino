@@ -22,5 +22,5 @@ void setup() {
 void loop() {
     /* add main program code here */
 
-    ESPHTTPServer.handle();	// Send websocket data to web browser
+    ESPHTTPServer.handle();	// Attend OTA from Arduino IDE
 }
