@@ -77,6 +77,20 @@ This library makes use of other libraries you have to include in your Arduino li
 
 All other libraries used are installed in Arduino ESP8266 framework.
 
+##Troubleshooting
+
+If the compiler exits with an error similar to "WebHandlers.cpp:67:64: error: 'strftime' was not declared in this scope", follow these steps:
+
+* Locate  folder `/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/1.20.0-26-gb404fb9-2/xtensa-lx106-elf/include` 
+* make a copy of `time.h` and name it  `_time.h`
+* Locate and open `ESPAsyncWebServer\src\WebHandlerImpl.h`
+* Replace `#include <time.h>` to `#include <_time.h>`
+
+see https://github.com/me-no-dev/ESPAsyncWebServer/issues/60
+
+If the ESP8266 Sketch Data Upload fails with an error similar to "Exception in thread "AWT-EventQueue-0" java.lang.IllegalAccessError: tried to access method", replace the [ESP8266FS 0.3.0](https://github.com/esp8266/arduino-esp8266fs-plugin/releases/download/0.3.0/ESP8266FS-0.3.0.zip) plugin by the [ESP8266FS 0.2.0](https://github.com/esp8266/arduino-esp8266fs-plugin/releases/download/0.2.0/ESP8266FS-0.2.0.zip) plugin.
+
+
 ##TODO
 
 - ~~HTTP Authentication~~ HTTP Basic authentication implemented. Will try to improve to a more secure mechanism.
