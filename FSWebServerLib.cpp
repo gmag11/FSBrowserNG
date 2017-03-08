@@ -568,7 +568,7 @@ void AsyncFSWebServer::handleFileCreate(AsyncWebServerRequest *request) {
         return request->requestAuthentication();
     if (request->args() == 0)
         return request->send(500, "text/plain", "BAD ARGS");
-    String path = request->arg(0);
+    String path = request->arg(0U);
     DEBUGLOG("handleFileCreate: %s\r\n", path.c_str());
     if (path == "/")
         return request->send(500, "text/plain", "BAD PATH");
@@ -587,7 +587,7 @@ void AsyncFSWebServer::handleFileDelete(AsyncWebServerRequest *request) {
     if (!checkAuth(request))
         return request->requestAuthentication();
     if (request->args() == 0) return request->send(500, "text/plain", "BAD ARGS");
-    String path = request->arg(0);
+    String path = request->arg(0U);
     DEBUGLOG("handleFileDelete: %s\r\n", path.c_str());
     if (path == "/")
         return request->send(500, "text/plain", "BAD PATH");
