@@ -21,7 +21,7 @@
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 
-//#define RELEASE  // Comment to enable debug output
+#define RELEASE  // Comment to enable debug output
 
 #define DBG_OUTPUT_PORT Serial
 
