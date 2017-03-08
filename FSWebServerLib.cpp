@@ -833,7 +833,7 @@ void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *re
         //ConfigureWifi();
         //AdminTimeOutCounter = 0;
     } else {
-        DBG_OUTPUT_PORT.println(request->url());
+        DEBUGLOG(request->url());
         handleFileRead(request->url(), request);
     }
     DEBUGLOG(__PRETTY_FUNCTION__);
