@@ -65,7 +65,7 @@ typedef struct {
     String wwwPassword;
 } strHTTPAuth;
 
-class AsyncFSWebServer : AsyncWebServer {
+class AsyncFSWebServer : public AsyncWebServer {
 public:
     AsyncFSWebServer(uint16_t port);
     void begin(FS* fs);
