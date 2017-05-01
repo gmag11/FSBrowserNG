@@ -824,7 +824,7 @@ void AsyncFSWebServer::send_network_configuration_html(AsyncWebServerRequest *re
             if (request->argName(i) == "dns_3") { if (checkRange(request->arg(i))) 	_config.dns[3] = request->arg(i).toInt(); continue; }
             if (request->argName(i) == "dhcp") { _config.dhcp = true; continue; }
         }
-        request->send(200, "text/html", Page_WaitAndReload);
+        request->send_P(200, "text/html", Page_WaitAndReload);
         save_config();
         //yield();
         delay(1000);
@@ -856,7 +856,7 @@ void AsyncFSWebServer::send_general_configuration_html(AsyncWebServerRequest *re
                 continue;
             }
         }
-        request->send(200, "text/html", Page_Restart);
+        request->send_P(200, "text/html", Page_Restart);
         save_config();
         _fs->end();
         ESP.restart();
@@ -916,7 +916,7 @@ void AsyncFSWebServer::send_NTP_configuration_html(AsyncWebServerRequest *reques
 }
 
 void AsyncFSWebServer::restart_esp(AsyncWebServerRequest *request) {
-    request->send(200, "text/html", Page_Restart);
+    request->send_P(200, "text/html", Page_Restart);
     DEBUGLOG(__FUNCTION__);
     DEBUGLOG("\r\n");
     _fs->end(); // SPIFFS.end();
