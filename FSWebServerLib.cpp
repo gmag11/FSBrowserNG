@@ -360,8 +360,8 @@ bool AsyncFSWebServer::loadHTTPAuth() {
 #endif // RELEASE
 
     _httpAuth.auth = json["auth"];
-    _httpAuth.wwwUsername = json["user"].asString();
-    _httpAuth.wwwPassword = json["pass"].asString();
+    _httpAuth.wwwUsername = json["user"].as<String>();
+    _httpAuth.wwwPassword = json["pass"].as<String>();
 
     DEBUGLOG(_httpAuth.auth ? "Secret initialized.\r\n" : "Auth disabled.\r\n");
     if (_httpAuth.auth) {
