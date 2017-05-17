@@ -97,7 +97,7 @@ If the ESP8266 Sketch Data Upload fails with an error similar to "Exception in t
 - ~~OTA update via web interface~~ MD5 cheching added.
 - ~~MD5 check of uploaded firmware~~
 - ~~Configuration protection~~
-- ~~HTTPS (in evaluation).~~ *Not possible with ESP8266 yet*
+- ~~HTTPS (in evaluation).~~ *Not possible with ESP8266*
 - ~~Integration of editor in admin.html~~
 - ~~Convert code to classes and try to design a library to add all this functionality easily.~~
 - 2-Step authentication
