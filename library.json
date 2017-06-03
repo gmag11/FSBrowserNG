@@ -1,0 +1,19 @@
+{
+"name": "FSBrowserNG",
+"frameworks": "Arduino",
+"keywords": "network, wifi, ntp, ota",
+"description": "Library to get a configurable environment for ESP8266 over the air",
+"url": "https://github.com/gmag11/FSBrowserNG",
+"authors":
+[
+{
+        "name": "Germán Martín"
+}
+],
+"repository":
+{
+    "type": "git",
+    "url": "https://github.com/gmag11/FSBrowserNG"
+}
+}
+
