@@ -1305,3 +1305,7 @@ bool AsyncFSWebServer::checkAuth(AsyncWebServerRequest *request) {
     }
 
 }
+
+const char* AsyncFSWebServer::getHostName() {
+    return _config.deviceName.c_str();
+}

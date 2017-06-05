@@ -70,6 +70,7 @@ public:
     AsyncFSWebServer(uint16_t port);
     void begin(FS* fs);
     void handle();
+    const char* getHostName();
 
 
 protected:
