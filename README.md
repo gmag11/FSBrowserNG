@@ -3,6 +3,21 @@ Full autocontained (on SPIFFS) async web server on ESP8266. Written as a Library
 
 Same features as my FSBrowser sketch but built around AsyncWebServer library and implemented as a library itself. See *.ino file for usage example
 
+#Species5618 plans
+* 3 or more specials folders , with callback to toplevel ino code support, to allow main code to send and recieve data from web without editing library
+	* json , get and put JSON data back to main code
+	* rest , get and put plain text data to main code
+	* post , form post handlers 
+
+* Add Config capability reuse JSON capability to store generic config items in JSON files on SPIFFS
+* 2FA login, plan to include a google auithenticator libary so one time password can be used, this feature May be added back into orginal project
+* send email on config change or login
+* send SMS via textlocal or nexmo, 
+	* may try and support tokenised URL 
+	* may try and support SSL URLs
+
+
+
 ## Introduction
 I wanted to add a standard environment for all my ESP8266 based projects to be able to configure them via web browser to avoid code editing when I need to change some settings like SSID, password, etc.
 
