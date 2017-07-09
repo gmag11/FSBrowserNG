@@ -38,6 +38,11 @@
 #define CONFIG_FILE "/config.json"
 #define SECRET_FILE "/secret.json"
 
+#define JSON_CALLBACK_SIGNATURE std::function<void(AsyncWebServerRequest *request)> jsoncallback
+#define REST_CALLBACK_SIGNATURE std::function<void(AsyncWebServerRequest *request)> restcallback
+#define POST_CALLBACK_SIGNATURE std::function<void(AsyncWebServerRequest *request)> postcallback
+
+
 typedef struct {
     String ssid;
     String password;
@@ -71,6 +76,16 @@ public:
     void begin(FS* fs);
     void handle();
     const char* getHostName();
+
+	AsyncFSWebServer& setJSONCallback(JSON_CALLBACK_SIGNATURE);
+	AsyncFSWebServer& setRESTCallback(REST_CALLBACK_SIGNATURE);
+	AsyncFSWebServer& setPOSTCallback(POST_CALLBACK_SIGNATURE);
+
+
+private:
+	JSON_CALLBACK_SIGNATURE;
+	REST_CALLBACK_SIGNATURE;
+	POST_CALLBACK_SIGNATURE;
 
 
 protected:

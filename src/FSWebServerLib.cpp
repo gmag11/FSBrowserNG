@@ -399,7 +399,12 @@ void AsyncFSWebServer::configureWifiAP() {
 }
 
 void AsyncFSWebServer::configureWifi() {
-    WiFi.mode(WIFI_STA);
+	//disconnect required here
+	//improves reconnect reliability
+	WiFi.disconnect(); 
+
+	WiFi.mode(WIFI_STA);
+
     //currentWifiStatus = WIFI_STA_DISCONNECTED;
     DEBUGLOG("Connecting to %s\r\n", _config.ssid.c_str());
     WiFi.begin(_config.ssid.c_str(), _config.password.c_str());
@@ -1241,6 +1246,34 @@ void AsyncFSWebServer::serverInit() {
     });
 
 
+	on("/json", [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
+		if (jsoncallback)
+		{
+			this->jsoncallback(request);
+		}
+	});
+
+	on("/rest", [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
+		if (restcallback)
+		{
+			this->restcallback(request);
+		}
+	});
+
+	on("/post", [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
+		if (postcallback)
+		{
+			this->postcallback(request);
+		}
+	});
+
+
     //called when the url is not defined here
     //use it to load content from SPIFFS
     onNotFound([this](AsyncWebServerRequest *request) {
@@ -1309,3 +1342,19 @@ bool AsyncFSWebServer::checkAuth(AsyncWebServerRequest *request) {
 const char* AsyncFSWebServer::getHostName() {
     return _config.deviceName.c_str();
 }
+
+AsyncFSWebServer& AsyncFSWebServer::setJSONCallback(JSON_CALLBACK_SIGNATURE) {
+	this->jsoncallback = jsoncallback;
+	return *this;
+}
+
+AsyncFSWebServer& AsyncFSWebServer::setRESTCallback(REST_CALLBACK_SIGNATURE) {
+	this->restcallback = restcallback;
+	return *this;
+}
+
+AsyncFSWebServer& AsyncFSWebServer::setPOSTCallback(POST_CALLBACK_SIGNATURE) {
+	this->postcallback = postcallback;
+	return *this;
+}
+
