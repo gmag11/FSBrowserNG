@@ -72,7 +72,7 @@ This library makes use of other libraries you have to include in your Arduino li
 - `TimeLib.h` Time library by **Paul Stoffregen** https://github.com/PaulStoffregen/Time
 - `NtpClientLib.h` NTP Client library by **Germ&aacute;n Mart&iacute;n** https://github.com/gmag11/NtpClient
 - `ESPAsyncTCP.h` Async TCP library by **Me No Dev** https://github.com/me-no-dev/ESPAsyncTCP
-- `ESPAsyncWebServer.h` HTTP Async Web Server library by **Me No Dev** https://github.com/me-no-dev/ESPAsyncTCP
+- `ESPAsyncWebServer.h` HTTP Async Web Server library by **Me No Dev** https://github.com/me-no-dev/ESPAsyncWebServer
 - `ArduinoJson` JSON library by **Benoît Blanchon** https://github.com/bblanchon/ArduinoJson
 
 All other libraries used are installed in Arduino ESP8266 framework.
@@ -81,7 +81,10 @@ All other libraries used are installed in Arduino ESP8266 framework.
 
 If the compiler exits with an error similar to "WebHandlers.cpp:67:64: error: 'strftime' was not declared in this scope", follow these steps:
 
-* Locate  folder `/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/1.20.0-26-gb404fb9-2/xtensa-lx106-elf/include` 
+* Locate folder `/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/1.20.0-26-gb404fb9-2/xtensa-lx106-elf/include` 
+For windows the path is:
+`C:\Users\YOURUSER\AppData\Local\Arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\xtensa-lx106-elf\include` respectively
+`C:\Users\pzpx6d\Local Settings\Arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\xtensa-lx106-elf\include\`
 * make a copy of `time.h` and name it  `_time.h`
 * Locate and open `ESPAsyncWebServer\src\WebHandlerImpl.h`
 * Replace `#include <time.h>` to `#include <_time.h>`
