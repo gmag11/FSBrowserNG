@@ -65,7 +65,7 @@ You may add your own files to SPIFFS to be served by ESP8266. You only need to a
 
 FSBrowserNG extends AsyncWebServer class. So, you may use all its methods as usual.
 
-## Dependances
+## Dependencies
 
 This library makes use of other libraries you have to include in your Arduino library folder.
 
@@ -81,8 +81,8 @@ All other libraries used are installed in Arduino ESP8266 framework.
 
 If the compiler exits with an error similar to "WebHandlers.cpp:67:64: error: 'strftime' was not declared in this scope", follow these steps:
 
-* Locate folder `/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/1.20.0-26-gb404fb9-2/xtensa-lx106-elf/include` 
-For windows the path is:
+* Locate folder `/Library/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/1.20.0-26-gb404fb9-2/xtensa-lx106-elf/include` <br>
+For windows the path is: <br>
 `C:\Users\YOURUSER\AppData\Local\Arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\xtensa-lx106-elf\include` respectively
 `C:\Users\pzpx6d\Local Settings\Arduino15\packages\esp8266\tools\xtensa-lx106-elf-gcc\1.20.0-26-gb404fb9-2\xtensa-lx106-elf\include\`
 * make a copy of `time.h` and name it  `_time.h`
