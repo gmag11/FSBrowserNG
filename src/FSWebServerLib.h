@@ -21,7 +21,7 @@
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 
-#define RELEASE  // Comment to enable debug output
+ #define RELEASE  // Comment to enable debug output
 
 #define DBG_OUTPUT_PORT Serial
 
@@ -34,14 +34,15 @@
 #define CONNECTION_LED 2 // Connection LED pin (Built in). -1 to disable
 #define AP_ENABLE_BUTTON 4 // Button pin to enable AP during startup for configuration. -1 to disable
 
-
+// #define HIDE_CONFIG
 #define CONFIG_FILE "/config.json"
+#define USER_CONFIG_FILE "/userconfig.json"
+#define GENERIC_CONFIG_FILE "/genericconfig.json"
 #define SECRET_FILE "/secret.json"
 
 #define JSON_CALLBACK_SIGNATURE std::function<void(AsyncWebServerRequest *request)> jsoncallback
 #define REST_CALLBACK_SIGNATURE std::function<void(AsyncWebServerRequest *request)> restcallback
 #define POST_CALLBACK_SIGNATURE std::function<void(AsyncWebServerRequest *request)> postcallback
-
 
 typedef struct {
     String ssid;
@@ -80,6 +81,15 @@ public:
 	AsyncFSWebServer& setJSONCallback(JSON_CALLBACK_SIGNATURE);
 	AsyncFSWebServer& setRESTCallback(REST_CALLBACK_SIGNATURE);
 	AsyncFSWebServer& setPOSTCallback(POST_CALLBACK_SIGNATURE);
+	bool save_user_config(String name, String value);
+	bool load_user_config(String name, String &value);
+	bool save_user_config(String name, int value);
+	bool load_user_config(String name, int &value);
+	bool save_user_config(String name, float value);
+	bool load_user_config(String name, float &value);
+	bool save_user_config(String name, long value);
+	bool load_user_config(String name, long &value);
+	static String urldecode(String input); // (based on https://code.google.com/p/avr-netino/)
 
 
 private:
@@ -110,6 +120,7 @@ protected:
     bool load_config();
     void defaultConfig();
     bool save_config();
+	// bool load_generic_config()
     bool loadHTTPAuth();
     bool saveHTTPAuth();
     void configureWifiAP();
@@ -146,7 +157,7 @@ protected:
     void setUpdateMD5(AsyncWebServerRequest *request);
     void updateFirmware(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
 
-    static String urldecode(String input); // (based on https://code.google.com/p/avr-netino/)
+ //   static String urldecode(String input); // (based on https://code.google.com/p/avr-netino/)
     static unsigned char h2int(char c);
     static boolean checkRange(String Value);
 };

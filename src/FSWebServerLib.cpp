@@ -3,6 +3,8 @@
 // 
 
 
+//
+
 #include "FSWebServerLib.h"
 #include <StreamString.h>
 
@@ -162,6 +164,8 @@ void AsyncFSWebServer::begin(FS* fs) {
     DEBUGLOG("END Setup\n");
 }
 
+//duplicate config stuff for user level config items
+
 bool AsyncFSWebServer::load_config() {
     File configFile = _fs->open(CONFIG_FILE, "r");
     if (!configFile) {
@@ -184,7 +188,7 @@ bool AsyncFSWebServer::load_config() {
     // use configFile.readString instead.
     configFile.readBytes(buf.get(), size);
     configFile.close();
-    DEBUGLOG("JSON file size: %d bytes\r\n", size);
+    DEBUGLOG("191 JSON file size: %d bytes\r\n", size);
     DynamicJsonBuffer jsonBuffer(1024);
     //StaticJsonBuffer<1024> jsonBuffer;
     JsonObject& json = jsonBuffer.parseObject(buf.get());
@@ -311,6 +315,166 @@ bool AsyncFSWebServer::save_config() {
     return true;
 }
 
+bool AsyncFSWebServer::load_user_config(String name, String &value) {
+	File configFile = _fs->open(USER_CONFIG_FILE, "r");
+	if (!configFile) {
+		DEBUGLOG("Failed to open config file");
+		return false;
+	}
+
+	size_t size = configFile.size();
+	/*if (size > 1024) {
+	DEBUGLOG("Config file size is too large");
+	configFile.close();
+	return false;
+	}*/
+
+	// Allocate a buffer to store contents of the file.
+	std::unique_ptr<char[]> buf(new char[size]);
+
+	// We don't use String here because ArduinoJson library requires the input
+	// buffer to be mutable. If you don't use ArduinoJson, you may as well
+	// use configFile.readString instead.
+	configFile.readBytes(buf.get(), size);
+	configFile.close();
+	DEBUGLOG("340 JSON file size: %d bytes\r\n", size);
+	DynamicJsonBuffer jsonBuffer(1024);
+	//StaticJsonBuffer<1024> jsonBuffer;
+	JsonObject& json = jsonBuffer.parseObject(buf.get());
+
+	if (!json.success()) {
+		DEBUGLOG("Failed to parse config file\r\n");
+		return false;
+	}
+#ifndef RELEASE
+	String temp;
+	json.prettyPrintTo(temp);
+	Serial.println(temp);
+#endif
+
+	value = json[name].asString();
+
+	DEBUGLOG("Data initialized.\r\n");
+	DEBUGLOG("SSID: %s ", _config.ssid.c_str());
+	DEBUGLOG("PASS: %s\r\n", _config.password.c_str());
+	DEBUGLOG("NTP Server: %s\r\n", _config.ntpServerName.c_str());
+	//DEBUGLOG("Connection LED: %d\n", config.connectionLed);
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
+	return true;
+}
+
+bool AsyncFSWebServer::save_user_config(String name, String value) {
+//add logic to test and create if non
+	DEBUGLOG(name.c_str());
+	DEBUGLOG("\r\n");
+	DEBUGLOG(value.c_str());
+	DEBUGLOG("\r\n");
+
+	File configFile;
+	if (!_fs->exists(USER_CONFIG_FILE))
+	{
+		configFile = _fs->open(USER_CONFIG_FILE, "w");
+		if (!configFile) {
+			DEBUGLOG("Failed to open config file for writing\r\n");
+			configFile.close();
+			return false;
+		}
+		//create blank json file
+		DEBUGLOG("Creating user config file for writing\r\n");
+		configFile.print("{}");
+		configFile.close();
+	}
+	//get existing json file
+	configFile = _fs->open(USER_CONFIG_FILE, "r");
+	if (!configFile) {
+		DEBUGLOG("Failed to open config file");
+		return false;
+	}
+	size_t size = configFile.size();
+	/*if (size > 1024) {
+	DEBUGLOG("Config file size is too large");
+	configFile.close();
+	return false;
+	}*/
+
+	// Allocate a buffer to store contents of the file.
+	std::unique_ptr<char[]> buf(new char[size]);
+
+	// We don't use String here because ArduinoJson library requires the input
+	// buffer to be mutable. If you don't use ArduinoJson, you may as well
+	// use configFile.readString instead.
+	configFile.readBytes(buf.get(), size);
+	configFile.close();
+	DEBUGLOG("Read JSON file size: %d bytes\r\n", size);
+	DynamicJsonBuffer jsonBuffer(1024);
+	//StaticJsonBuffer<1024> jsonBuffer;
+	JsonObject& json = jsonBuffer.parseObject(buf.get());
+
+	if (!json.success()) {
+		DEBUGLOG("Failed to parse config file\r\n");
+		return false;
+	}
+	else
+	{
+		DEBUGLOG("Parse User config file\r\n");
+	}
+
+	json[name] = value;
+
+	configFile = _fs->open(USER_CONFIG_FILE, "w");
+	if (!configFile) {
+		DEBUGLOG("Failed to open config file for writing\r\n");
+		configFile.close();
+		return false;
+	}
+
+#ifndef RELEASE
+	DEBUGLOG("Save user config \r\n");
+	String temp;
+	json.prettyPrintTo(temp);
+	Serial.println(temp);
+#endif
+
+	json.printTo(configFile);
+	configFile.flush();
+	configFile.close();
+	return true;
+}
+
+bool AsyncFSWebServer::load_user_config(String name, int &value) {
+	String sTemp = "";
+	bool bTemp = load_user_config( name,  sTemp);
+	value = sTemp.toInt();
+	return bTemp;
+}
+
+bool AsyncFSWebServer::save_user_config(String name, int value) {
+	return AsyncFSWebServer::save_user_config(name, String(value));
+}
+
+bool AsyncFSWebServer::load_user_config(String name, float &value) {
+	String sTemp = "";
+	bool bTemp = load_user_config(name, sTemp);
+	value = sTemp.toFloat();
+	return bTemp;
+}
+
+bool AsyncFSWebServer::save_user_config(String name, float value) {
+	return AsyncFSWebServer::save_user_config(name, String(value,8));
+}
+
+bool AsyncFSWebServer::load_user_config(String name, long &value) {
+	String sTemp = "";
+	bool bTemp = load_user_config(name, sTemp);
+	value = atol(sTemp.c_str());
+	return bTemp;
+}
+
+bool AsyncFSWebServer::save_user_config(String name, long value) {
+	return AsyncFSWebServer::save_user_config(name, String(value));
+}
+
 bool AsyncFSWebServer::loadHTTPAuth() {
     File configFile = _fs->open(SECRET_FILE, "r");
     if (!configFile) {
@@ -373,8 +537,6 @@ bool AsyncFSWebServer::loadHTTPAuth() {
 
     return true;
 }
-
-
 
 void AsyncFSWebServer::handle() {
     ArduinoOTA.handle();
@@ -561,6 +723,7 @@ bool AsyncFSWebServer::handleFileRead(String path, AsyncWebServerRequest *reques
         //File file = SPIFFS.open(path, "r");
         DEBUGLOG("File %s exist\r\n", path.c_str());
         request->send(response);
+		DEBUGLOG("File %s Sent\r\n", path.c_str());
 
         return true;
     } else
@@ -1314,6 +1477,16 @@ void AsyncFSWebServer::serverInit() {
         response->addHeader("Access-Control-Allow-Origin", "*");
         request->send(response);
     });
+
+	on(USER_CONFIG_FILE, HTTP_GET, [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
+		AsyncWebServerResponse *response = request->beginResponse(403, "text/plain", "Forbidden");
+		response->addHeader("Connection", "close");
+		response->addHeader("Access-Control-Allow-Origin", "*");
+		request->send(response);
+	});
+
 #endif // HIDE_CONFIG
 
     //get heap status, analog input value and all GPIO statuses in one json call
