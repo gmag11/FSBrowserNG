@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" href="style.css" type="text/css" />
+<a href="admin.html"  class="btn btn--s">&lt;</a>&nbsp;&nbsp;<strong>System Settings</strong>
+	<hr>
+	<form>
+	  <table border="0"  cellspacing="0" cellpadding="3" style="width:350px" >
+	    <tr>
+	      <td align="center">
+			    <a href="/edit" class="btn btn--m btn--blue">FS Editor</a>
+		    </td>
+		    <td align="center">
+			    <a href="javascript:restartESP()" class="btn btn--m btn--blue">Restart</a>
+		    </td>
+	    </tr>
+        <tr>
+            <td colspan="2" align="center">
+                <a href="/update" class="btn btn--m btn--blue" style="width:150px">OTA Update</a>
+            </td>
+        </tr>
+    </table>
+  </form>
+  <hr />
+  <form id="wwwAuthForm" action="" method="get">
+      <table border="0" cellspacing="0" cellpadding="3" style="width:350px">
+          <tr>
+              <td style="width:120px" align="right">Use auth:</td>
+              <td>
+                  <input type="checkbox" id="wwwauth" name="wwwauth" onclick='enableAuthFields(this);'>
+              </td>
+          </tr>
+          <tr>
+              <td align="right">Web User:</td>
+              <td>
+                  <input type="text" id="wwwuser" name="wwwuser" value="">
+              </td>
+          </tr>
+          <tr>
+              <td align="right">Password:</td>
+              <td>
+                  <input type="password" id="wwwpass" name="wwwpass" value="">
+              </td>
+          </tr>
+          <tr>
+              <td align="left" colspan="2">Notice password is used for<br/>HTTP Auth, AP Mode and OTA</td>
+          </tr>
+          <tr>
+              <td colspan="2" align="center">
+                  <a href='javascript:submitFrm(document.forms["wwwAuthForm"])' style="width:150px" class="btn btn--m btn--blue">Save</a>
+              </td>
+          </tr>
+          
+      </table>
+  </form>
+  <table border="0" cellspacing="0" cellpadding="3" style="width:350px">
+    <tr>
+        <td id="submitResult"></td>
+    </tr>
+  </table>
+  <script>
+        function enableAuthFields(cb) {
+            //document.getElementById("wwwuser").disabled = !cb.checked;
+            //document.getElementById("wwwpass").disabled = !cb.checked;
+        }
+
+        function submitFrm(frm) {
+            if (document.getElementById("wwwauth").checked) {
+                if ((document.getElementById("wwwuser").value != "") && (document.getElementById("wwwpass").value != "")) {
+                    //document.getElementById("submitResult").innerHTML = "Auth updated";
+                    console.log("User: " + document.getElementById("wwwuser").value);
+                    console.log("Pass: " + document.getElementById("wwwpass").value);
+                    console.log("Enable: " + document.getElementById("wwwauth").checked);
+                    frm.submit();
+                } else {
+                    document.getElementById("submitResult").innerHTML = "User and password must be filled";
+                }
+            } else {
+                //document.getElementById("wwwuser").value = "";
+                document.getElementById("wwwpass").value = "";
+                //document.getElementById("submitResult").innerHTML = "Auth disabled";
+                console.log("User: " + document.getElementById("wwwuser").value);
+                console.log("Pass: " + document.getElementById("wwwpass").value);
+                console.log("Enable: " + document.getElementById("wwwauth").checked);
+                frm.submit();
+                
+            }
+        }
+
+        function restartESP() {
+            setValues("/admin/restart");
+        }
+
+        function GetState() {
+            setValues("/admin/wwwauth");
+        }
+
+        window.onload = function () {
+            load("style.css", "css", function () {
+                load("microajax.js", "js", function () {
+                    GetState();
+                });
+            });
+            enableAuthFields(document.getElementById("wwwauth"));
+        }
+        function load(e, t, n) {
+            if ("js" == t) {
+                var a = document.createElement("script");
+                a.src = e,
+                a.type = "text/javascript",
+                a.async = !1,
+                a.onload = function () { n() },
+                document.getElementsByTagName("head")[0].appendChild(a)
+            } else if ("css" == t) {
+                var a = document.createElement("link");
+                a.href = e,
+                a.rel = "stylesheet",
+                a.type = "text/css",
+                a.async = !1,
+                a.onload = function () { n() },
+                document.getElementsByTagName("head")[0].appendChild(a)
+            }
+        }
+
+
+
+    </script>
