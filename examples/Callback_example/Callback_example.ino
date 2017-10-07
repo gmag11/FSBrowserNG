@@ -28,9 +28,16 @@ void  callbackREST(AsyncWebServerRequest *request)
 	if (request->url() == "/rest/userdemo")
 	{
 		//contruct and send and desired repsonse
-		String values = "user1|Sample Data 1.|input\n";
-		values += "user2|Sample Data 2.|input\n";
-		values += "user3|Sample Data 3.|input\n";
+		// get sample data from json file
+		String data = "";
+		ESPHTTPServer.load_user_config("user1", data);
+		String values = "user1|"+ data +"|input\n";
+
+		ESPHTTPServer.load_user_config("user2", data);
+		values += "user2|" + data + "|input\n";
+
+		ESPHTTPServer.load_user_config("user3", data);
+		values += "user3|" + data + "|input\n";
 		request->send(200, "text/plain", values);
 		values = "";
 	}
@@ -56,10 +63,15 @@ void  callbackPOST(AsyncWebServerRequest *request)
 			Serial.print(request->argName(i));
 			Serial.print(" : ");
 			Serial.println(ESPHTTPServer.urldecode(request->arg(i)));
+
 			//check for post redirect
 			if (request->argName(i) == "afterpost")
 			{
 				target = ESPHTTPServer.urldecode(request->arg(i));
+			}
+			else  //or savedata in Json File
+			{
+				ESPHTTPServer.save_user_config(request->argName(i), request->arg(i));
 			}
         }
 
