@@ -117,8 +117,30 @@ If the ESP8266 Sketch Data Upload fails with an error similar to "Exception in t
 	* bool load_user_config(String name, float &value);
 	* bool save_user_config(String name, long value);
 	* bool load_user_config(String name, long &value);
+	
+* added generic handlers for saving and post user config (1st Nov 2017)
+ 
+read data example  (see user2.html in callback example)
+/rconfig/user1/user2/user3
 
+will return values user1 ,  user2 and user3
+user1|1|input
+user2|2|input
+user3|3|input
 
+for div and chk valuea add 'd_' add 'c_ 'to the url part
+so /rconfig/user1/d_user2/c_user3
+for example might return
+
+user1|1|input
+user2|222222222222|div
+user3|1|chk
+
+and 
+/pconfig
+will save ANY posted form value in the user config file
+
+NOTE this may expose you config, be carefull
 
 ## TODO
 
