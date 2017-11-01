@@ -1259,6 +1259,99 @@ void AsyncFSWebServer::updateFirmware(AsyncWebServerRequest *request, String fil
     //delay(2);
 }
 
+
+void AsyncFSWebServer::handle_rest_config(AsyncWebServerRequest *request) {
+
+
+	String values = "";
+	// handle generic rest call
+	//dirty processing as no split function
+	int p = 0; //string ptr
+	int t = 0; // temp string pointer
+	String URL = request->url().substring(9);
+	String name = "";
+	String data = "";
+	String type = "";
+
+	while (p < URL.length())
+	{
+		t = URL.indexOf("/", p);
+		if (t >= 0)
+		{
+			name = URL.substring(p, t);
+			p = t + 1;
+
+		}
+		else
+		{
+			name = URL.substring(p);
+			p = URL.length();
+		}
+		if (name.substring(1, 2) == "_")
+		{
+			type = name.substring(0, 2);
+			if (type == "i_")
+			{
+				type = "input";
+			}
+			else if (type == "d_")
+			{
+				type = "div";
+			}
+			else if (type == "c_")
+			{
+				type = "chk";
+			}
+			name = name.substring(2);
+		}
+		else
+		{
+			type = "input";
+		}
+
+		load_user_config(name, data);
+		values += name + "|" + data + "|" + type + "\n";
+	}
+	request->send(200, "text/plain", values);
+	values = "";
+
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
+
+
+}
+
+
+void AsyncFSWebServer::post_rest_config(AsyncWebServerRequest *request) {
+
+	String target = "/";
+
+	for (uint8_t i = 0; i < request->args(); i++) {
+		DEBUGLOG("Arg %d: %s\r\n", i, request->arg(i).c_str());
+		DEBUGLOG(request->argName(i));
+		DEBUGLOG(" : ");
+		DEBUGLOG(urldecode(request->arg(i)));
+
+		//check for post redirect
+		if (request->argName(i) == "afterpost")
+		{
+			target = urldecode(request->arg(i));
+		}
+		else  //or savedata in Json File
+		{
+			save_user_config(request->argName(i), request->arg(i));
+		}
+	}
+
+	request->redirect(target);
+
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
+
+
+}
+
+
 void AsyncFSWebServer::serverInit() {
     //SERVER INIT
     //list directory
@@ -1407,6 +1500,18 @@ void AsyncFSWebServer::serverInit() {
     }, [this](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
         this->updateFirmware(request, filename, index, data, len, final);
     });
+
+	on("/rconfig", HTTP_GET, [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
+		this->handle_rest_config(request);
+	});
+
+	on("/pconfig", HTTP_POST, [this](AsyncWebServerRequest *request) {
+		if (!this->checkAuth(request))
+			return request->requestAuthentication();
+		this->post_rest_config(request);
+	});
 
 
 	on("/json", [this](AsyncWebServerRequest *request) {
