@@ -152,3 +152,6 @@ NOTE this may expose you config, be carefull
 - ~~Integration of editor in admin.html~~
 - ~~Convert code to classes and try to design a library to add all this functionality easily.~~
 - 2-Step authentication
+
+
+## Please Let Us know of any good projects based on this library, I wil linclude them in the examples/Otherexmaples.txt file
