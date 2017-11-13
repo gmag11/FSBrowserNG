@@ -1,0 +1,9 @@
+I have created a project based on this..
+
+it is a DS18B20 based thermometer using a DSP-01
+
+https://github.com/species5618/MQTT_Thermometer_ESP-01
+using MQTT and JSON / REST * Post exmaples
+
+
+
