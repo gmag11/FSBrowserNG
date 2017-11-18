@@ -1521,6 +1521,12 @@ void AsyncFSWebServer::serverInit() {
 		{
 			this->jsoncallback(request);
 		}
+		else
+		{
+			String values = "";
+			request->send(200, "text/plain", values);
+		    values = "";
+		}
 	});
 
 	on("/rest", [this](AsyncWebServerRequest *request) {
@@ -1530,6 +1536,13 @@ void AsyncFSWebServer::serverInit() {
 		{
 			this->restcallback(request);
 		}
+				else
+		{
+			String values = "";
+			request->send(200, "text/plain", values);
+		    values = "";
+		}
+
 	});
 
 	on("/post", [this](AsyncWebServerRequest *request) {
@@ -1538,6 +1551,12 @@ void AsyncFSWebServer::serverInit() {
 		if (postcallback)
 		{
 			this->postcallback(request);
+		}
+				else
+		{
+			String values = "";
+			request->send(200, "text/plain", values);
+		    values = "";
 		}
 	});
 
