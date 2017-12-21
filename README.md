@@ -38,7 +38,7 @@ I use a library called [**ESPAsyncWebServer**](https://github.com/me-no-dev/ESPA
 ## WiFi connection
 I've implemented a way to turn ESP8266 into AP mode so I can set WiFi config when prior WiFi is not available. It is done by setting IO pin 4 to high status during boot. This pin is configurable by a `#define.` in [FSWebServerlib.h](https://github.com/gmag11/FSBrowserNG/blob/master/FSWebServerLib.h#L35). **You must ensure it is connected to GND to allow it to connect to a router**.
 
-AP Mode is also started when `loadConfig()` finds no config file (config.json). This is so to help first use without needind to hardcode user and password. config.js is generated automatically if needed:
+AP Mode is also started when `loadConfig()` finds no config file (config.json). This is so to help first use without needind to hardcode user and password. config.json is generated automatically if needed:
 
 ``` json
 {
@@ -48,12 +48,12 @@ AP Mode is also started when `loadConfig()` finds no config file (config.json). 
 	"netmask":[255,255,255,0],
 	"gateway":[192,168,1,1],
 	"dns":[192,168,1,1],
-	"dhcp":1
-	,"ntp":"es.pool.ntp.org"
-	,"NTPperiod":5
-	,"timeZone":10
-	,"daylight":1
-	,"deviceName":"ESP8266fs"
+	"dhcp":1,
+	"ntp":"es.pool.ntp.org",
+	"NTPperiod":5,
+	"timeZone":10,
+	"daylight":1,
+	"deviceName":"ESP8266fs"
 }
 ```
 
