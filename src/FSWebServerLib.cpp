@@ -577,10 +577,23 @@ void AsyncFSWebServer::configureWifi() {
     //delay(2000);
     //delay(5000); // Wait for WiFi
 
-    while (!WiFi.isConnected()) {
-        delay(1000);
-        DBG_OUTPUT_PORT.print(".");
-    }
+	//remove unreliable wifi connection process SPECIES5618 2018-02-06 
+    //while (!WiFi.isConnected()) {
+    //    delay(1000);
+    //    DBG_OUTPUT_PORT.print(".");
+    //}
+
+//more rlieable wifi connection hold process SPECIES5618 2018-02-06 
+	DBG_OUTPUT_PORT.print("Attemping WiFi");
+	while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+
+		delay(3000);
+		DBG_OUTPUT_PORT.print("*");
+		WiFi.begin(_config.ssid.c_str(), _config.password.c_str());
+		WiFi.reconnect();
+
+
+
     DBG_OUTPUT_PORT.println();
     /*if (WiFi.isConnected()) {
         currentWifiStatus = WIFI_STA_CONNECTED;
