@@ -591,7 +591,7 @@ void AsyncFSWebServer::configureWifi() {
 		DBG_OUTPUT_PORT.print("*");
 		WiFi.begin(_config.ssid.c_str(), _config.password.c_str());
 		WiFi.reconnect();
-
+	}
 
 
     DBG_OUTPUT_PORT.println();
