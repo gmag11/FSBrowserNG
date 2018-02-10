@@ -1344,9 +1344,9 @@ void AsyncFSWebServer::post_rest_config(AsyncWebServerRequest *request) {
 
 	for (uint8_t i = 0; i < request->args(); i++) {
 		DEBUGLOG("Arg %d: %s\r\n", i, request->arg(i).c_str());
-		DEBUGLOG(request->argName(i));
+		DEBUGLOG(request->argName(i).c_str());
 		DEBUGLOG(" : ");
-		DEBUGLOG(urldecode(request->arg(i)));
+		DEBUGLOG(urldecode(request->arg(i)).c_str());
 
 		//check for post redirect
 		if (request->argName(i) == "afterpost")
