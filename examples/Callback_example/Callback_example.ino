@@ -12,7 +12,7 @@
 #include <FSWebServerLib.h>
 #include <Hash.h>
 
-
+#define VERSION "0.5a"
 
 void  callbackJSON(AsyncWebServerRequest *request)
 {
@@ -88,6 +88,15 @@ void  callbackPOST(AsyncWebServerRequest *request)
 	}
 }
 
+void  callbackUSERVERSION(AsyncWebServerRequest *request)
+{
+	String values = VERSION;
+	request->send(200, "text/plain", values);
+	values = "";
+}
+
+
+
 void setup() {
     // WiFi is started inside library
     SPIFFS.begin(); // Not really needed, checked inside library and started if needed
@@ -103,6 +112,8 @@ void setup() {
 	//set optioanl callback
 	ESPHTTPServer.setPOSTCallback(callbackPOST);
 
+	//set optioanl callback for user version
+	ESPHTTPServer.setUSERVERSION(VERSION);
 
 }
 

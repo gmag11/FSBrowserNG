@@ -20,6 +20,8 @@ const char Page_Restart[] PROGMEM = R"=====(
 Please Wait....Configuring and Restarting.
 )=====";
 
+String _Version = "0.00a";
+
 AsyncFSWebServer::AsyncFSWebServer(uint16_t port) : AsyncWebServer(port) {}
 
 /*void AsyncFSWebServer::secondTick()
@@ -813,8 +815,9 @@ void AsyncFSWebServer::handleFileUpload(AsyncWebServerRequest *request, String f
 
 void AsyncFSWebServer::send_general_configuration_values_html(AsyncWebServerRequest *request) {
     String values = "";
-    values += "devicename|" + (String)_config.deviceName + "|input\n";
-    request->send(200, "text/plain", values);
+	values += "devicename|" + (String)_config.deviceName + "|input\n";
+	values += "userversion|" + _Version + "|div\n";
+	request->send(200, "text/plain", values);
     DEBUGLOG(__FUNCTION__);
     DEBUGLOG("\r\n");
 }
@@ -1571,8 +1574,8 @@ void AsyncFSWebServer::serverInit() {
 			request->send(200, "text/plain", values);
 		    values = "";
 		}
-	});
 
+	});
 
     //called when the url is not defined here
     //use it to load content from SPIFFS
@@ -1667,4 +1670,9 @@ AsyncFSWebServer& AsyncFSWebServer::setPOSTCallback(POST_CALLBACK_SIGNATURE) {
 	this->postcallback = postcallback;
 	return *this;
 }
+
+void AsyncFSWebServer::setUSERVERSION(String Version) {
+	_Version = Version;
+}
+
 
