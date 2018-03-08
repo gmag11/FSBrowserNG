@@ -563,50 +563,20 @@ void AsyncFSWebServer::configureWifiAP() {
 }
 
 void AsyncFSWebServer::configureWifi() {
+	DEBUGLOG(__PRETTY_FUNCTION__);
+	DEBUGLOG("\r\n");
 	//disconnect required here
 	//improves reconnect reliability
 	WiFi.disconnect(); 
 
 	WiFi.mode(WIFI_STA);
 
-    //currentWifiStatus = WIFI_STA_DISCONNECTED;
-    DEBUGLOG("Connecting to %s\r\n", _config.ssid.c_str());
-    WiFi.begin(_config.ssid.c_str(), _config.password.c_str());
-    if (!_config.dhcp) {
-        DEBUGLOG("NO DHCP\r\n");
-        WiFi.config(_config.ip, _config.gateway, _config.netmask, _config.dns);
-    }
-    //delay(2000);
-    //delay(5000); // Wait for WiFi
-
-	//remove unreliable wifi connection process SPECIES5618 2018-02-06 
-    //while (!WiFi.isConnected()) {
-    //    delay(1000);
-    //    DBG_OUTPUT_PORT.print(".");
-    //}
-
-//more rlieable wifi connection hold process SPECIES5618 2018-02-06 
-	DBG_OUTPUT_PORT.print("Attemping WiFi");
-	while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-
-		delay(3000);
-		DBG_OUTPUT_PORT.print("*");
-		WiFi.begin(_config.ssid.c_str(), _config.password.c_str());
-		WiFi.reconnect();
-	}
-
-
-    DBG_OUTPUT_PORT.println();
-    /*if (WiFi.isConnected()) {
-        currentWifiStatus = WIFI_STA_CONNECTED;
-    }*/
-
-    DBG_OUTPUT_PORT.printf("IP Address: %s\n", WiFi.localIP().toString().c_str());
-
-    DEBUGLOG("Gateway:    %s\r\n", WiFi.gatewayIP().toString().c_str());
-    DEBUGLOG("DNS:        %s\r\n", WiFi.dnsIP().toString().c_str());
-    DEBUGLOG(__PRETTY_FUNCTION__);
-    DEBUGLOG("\r\n");
+  DEBUGLOG("Connecting to %s\r\n", _config.ssid.c_str());
+  WiFi.begin(_config.ssid.c_str(), _config.password.c_str());
+  if (!_config.dhcp) {
+      DEBUGLOG("NO DHCP\r\n");
+      WiFi.config(_config.ip, _config.gateway, _config.netmask, _config.dns);
+  }
 }
 
 void AsyncFSWebServer::ConfigureOTA(String password) {
@@ -647,6 +617,10 @@ void AsyncFSWebServer::ConfigureOTA(String password) {
 }
 
 void AsyncFSWebServer::onWiFiConnected(WiFiEventStationModeConnected data) {
+		DBG_OUTPUT_PORT.printf("IP Address: %s\n", WiFi.localIP().toString().c_str());
+
+		DEBUGLOG("Gateway:    %s\r\n", WiFi.gatewayIP().toString().c_str());
+		DEBUGLOG("DNS:        %s\r\n", WiFi.dnsIP().toString().c_str());
     if (CONNECTION_LED >= 0) {
         digitalWrite(CONNECTION_LED, LOW); // Turn LED on
     }

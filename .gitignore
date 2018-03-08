@@ -1,2 +1,8 @@
-Release/**
 **/config.json*
+
+.vcx
+Release/
+Debug/
+__vm/
+.vs/
+*.sln
