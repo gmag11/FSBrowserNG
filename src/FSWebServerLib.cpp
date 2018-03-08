@@ -568,7 +568,8 @@ void AsyncFSWebServer::configureWifi() {
 	//disconnect required here
 	//improves reconnect reliability
 	WiFi.disconnect(); 
-
+//encourge clean recovery after disconnect species5618, 08-March-2018
+	WiFi.setAutoReconnect(true) ;
 	WiFi.mode(WIFI_STA);
 
   DEBUGLOG("Connecting to %s\r\n", _config.ssid.c_str());
