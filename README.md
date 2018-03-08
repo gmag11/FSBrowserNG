@@ -1,3 +1,5 @@
+**Notice**: I (gmag11) do not have the free time to go on developing this project. If you would like to continue with it feel free to make your own fork or ask to be a collaborator. Please understand that I do need time for my job and my family :).
+
 # FSBrowserNG
 Full autocontained (on SPIFFS) async web server on ESP8266. Written as a Library.
 
