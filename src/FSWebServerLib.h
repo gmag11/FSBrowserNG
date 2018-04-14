@@ -12,7 +12,7 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <TimeLib.h>
-#include <NtpClientLib.h>
+#include "NtpClientLib.h"
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ESP8266mDNS.h>
@@ -108,7 +108,7 @@ protected:
     String _browserMD5 = "";
     uint32_t _updateSize = 0;
 
-    WiFiEventHandler onStationModeConnectedHandler, onStationModeDisconnectedHandler;
+	WiFiEventHandler onStationModeConnectedHandler, onStationModeDisconnectedHandler, onStationModeGotIPHandler;
 
     //uint currentWifiStatus;
 
@@ -130,7 +130,8 @@ protected:
     void serverInit();
 
     void onWiFiConnected(WiFiEventStationModeConnected data);
-    void onWiFiDisconnected(WiFiEventStationModeDisconnected data);
+	void onWiFiDisconnected(WiFiEventStationModeDisconnected data);
+	void onWiFiConnectedGotIP(WiFiEventStationModeGotIP data);
 
     static void s_secondTick(void* arg);
 
