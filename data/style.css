@@ -93,3 +93,7 @@ th {
         max-width: 16em !important;
     }
 }
+
+#userconfig label, #userconfig input {
+    display: block;
+}
