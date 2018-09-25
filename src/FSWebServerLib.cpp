@@ -1,6 +1,6 @@
-// 
-// 
-// 
+//
+//
+//
 
 
 //
@@ -555,6 +555,12 @@ bool AsyncFSWebServer::loadHTTPAuth() {
 
 void AsyncFSWebServer::handle() {
 	ArduinoOTA.handle();
+	if (updateTimeFromNTP) {
+		NTP.begin(_config.ntpServerName, _config.timezone / 10, _config.daylight);
+		NTP.setInterval(15, _config.updateNTPTimeEvery * 60);
+		Serial.println(NTP.getLastNTPSync());
+		updateTimeFromNTP = false;
+	}
 }
 
 void AsyncFSWebServer::configureWifiAP() {
@@ -586,7 +592,7 @@ void AsyncFSWebServer::configureWifi() {
 	WiFi.setAutoReconnect(true);
 	WiFi.mode(WIFI_STA);
 
-	
+
 	DBG_OUTPUT_PORT.printf("Connecting to %s\r\n", _config.ssid.c_str());
 	WiFi.begin(_config.ssid.c_str(), _config.password.c_str());
 	if (!_config.dhcp) {
@@ -658,11 +664,8 @@ void AsyncFSWebServer::onWiFiConnectedGotIP(WiFiEventStationModeGotIP data) {
 	wifiDisconnectedSince = 0;
 	//force NTPsstart after got ip
 	if (_config.updateNTPTimeEvery > 0) { // Enable NTP sync
-		NTP.begin(_config.ntpServerName, _config.timezone / 10, _config.daylight);
-		NTP.setInterval(15, _config.updateNTPTimeEvery * 60);
-		Serial.println(NTP.getLastNTPSync());
+		updateTimeFromNTP = true;
 	}
-
 }
 
 
@@ -1695,5 +1698,3 @@ AsyncFSWebServer& AsyncFSWebServer::setPOSTCallback(POST_CALLBACK_SIGNATURE) {
 void AsyncFSWebServer::setUSERVERSION(String Version) {
 	_Version = Version;
 }
-
-
