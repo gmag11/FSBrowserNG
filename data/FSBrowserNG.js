@@ -94,15 +94,33 @@ function createUserConfigForm(myJson) {
                 });
                 fieldset.appendChild(select);
             } else {
+                var hidden;
                 var input = document.createElement('input');
                 input.id = entity.name;
                 input.name = entity.name;
                 if (entity.attributes) {
                     Object.entries(entity.attributes).forEach(([attr, val]) => {
                         input[attr] = val;
+                        // special case for checkboxes
+                        // we want checkboxes to be submitted as either 0 or 1 depending on checkstate
+                        // since unchecked checkboxes aren't submitted at all, we use a hidden input for that checkbox value
+                        if (attr === 'type' && val == 'checkbox') {
+                            input.id = entity.name + '_checkbox';
+                            input.name = '';
+                            hidden = document.createElement('input');
+                            hidden.type = 'hidden';
+                            hidden.id = entity.name;
+                            hidden.name = entity.name;
+                            input.onclick = function() {
+                                document.getElementById(entity.name).value = this.checked ? 1 : 0;
+                            };
+                        }
                     });
                 }
                 fieldset.appendChild(input);
+                if (hidden !== undefined) {
+                    fieldset.insertBefore(hidden, input);
+                }
             }
         });
     });
