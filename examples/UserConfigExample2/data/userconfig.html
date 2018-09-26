@@ -40,7 +40,8 @@
                             if (checkbox !== null) {
                                 checkbox.checked = val === '0' ? false : true;
                             }
-                            document.getElementById(key).value = val;
+                            var ele = document.getElementById(key);
+                            if (ele !== null) { ele.value = val; }
                         });
                     })
                 })
