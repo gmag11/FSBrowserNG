@@ -21,7 +21,7 @@
 #include <ArduinoOTA.h>
 #include <ArduinoJson.h>
 
- #define RELEASE  // Comment to enable debug output
+#define RELEASE  // Comment to enable debug output
 
 #define DBG_OUTPUT_PORT Serial
 
@@ -31,8 +31,8 @@
 #define DEBUGLOG(...)
 #endif
 
-#define CONNECTION_LED 2 // Connection LED pin (Built in). -1 to disable
-#define AP_ENABLE_BUTTON 4 // Button pin to enable AP during startup for configuration. -1 to disable
+#define CONNECTION_LED -1 // Connection LED pin (Built in). -1 to disable
+#define AP_ENABLE_BUTTON 5 // Button pin to enable AP during startup for configuration. -1 to disable
 
 // #define HIDE_CONFIG
 #define CONFIG_FILE "/config.json"
@@ -107,6 +107,7 @@ protected:
     long wifiDisconnectedSince = 0;
     String _browserMD5 = "";
     uint32_t _updateSize = 0;
+    bool updateTimeFromNTP = false;
 
 	WiFiEventHandler onStationModeConnectedHandler, onStationModeDisconnectedHandler, onStationModeGotIPHandler;
 
@@ -160,7 +161,7 @@ protected:
     void updateFirmware(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
 	void handle_rest_config(AsyncWebServerRequest *request);
 	void post_rest_config(AsyncWebServerRequest *request);
-	
+
 
  //   static String urldecode(String input); // (based on https://code.google.com/p/avr-netino/)
     static unsigned char h2int(char c);

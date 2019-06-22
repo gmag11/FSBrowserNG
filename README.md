@@ -156,4 +156,8 @@ NOTE this may expose you config, be carefull
 - 2-Step authentication
 
 
+# Simple user config
+Simple way to add user config using the file userconfigui.json. No need to create or edit html files. See example UserConfigExample2.
+
+
 ## Please Let Us know of any good projects based on this library, I wil linclude them in the examples/Otherexmaples.txt file

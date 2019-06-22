@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>FSBrowserNG User Configuration</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="FSBrowserNG.js"></script>
+</head>
+
+<body>
+    <a href="admin.html" class="btn btn--s">&lt;</a>&nbsp;&nbsp;<strong>User Configuration</strong>
+    <hr>
+
+    <form action="/pconfig" method="POST">
+        <div id="userconfig"></div>
+
+
+        <input type="hidden" name="afterpost" value="/userconfig.html">
+        <input type="submit" style="width:150px" class="btn btn--m btn--blue" value="Save">
+    </form>
+
+    <script>
+        window.onload = function() {
+            syncLoader.loadFiles(["style.css", "microajax.js"]).then(() => {
+                fetch("userconfigui.json").then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                }).then(myJson => {
+                    createUserConfigForm(myJson);
+                    return true;
+                }).then(unused => {
+                    fetch("userconfig.json").then(response => {
+                        if (response.ok) {
+                            return response.json();
+                        }
+                    }).then(userJson => {
+                        Object.entries(userJson).forEach(([key, val]) => {
+                            var checkbox = document.getElementById(key+'_checkbox');
+                            if (checkbox !== null) {
+                                checkbox.checked = val === '0' ? false : true;
+                            }
+                            var ele = document.getElementById(key);
+                            if (ele !== null) { ele.value = val; }
+                        });
+                    })
+                })
+            });
+        }
+    </script>
+</body>
+
+</html>

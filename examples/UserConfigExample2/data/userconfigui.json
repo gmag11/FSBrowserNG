@@ -1,0 +1,50 @@
+{
+    "groups": [
+        {
+            "title": "First group",
+            "entities": [
+                {
+                    "name": "value1",
+                    "title": "This is the first value"
+                },
+                {
+                    "name": "value2",
+                    "title": "This is the second value",
+                    "attributes": {
+                        "type": "input",
+                        "maxlength": 10,
+                        "pattern": "^[a-zA-Z0-9]*$",
+                        "required": "1"
+                    }
+                }
+            ]
+        },
+        {
+            "title": "Second Group",
+            "entities": [
+                {
+                    "name": "value3",
+                    "title": "This is the third value",
+                    "attributes": {
+                        "type": "checkbox"
+                    }
+                },
+                {
+                    "name": "value4",
+                    "title": "This is the forth value",
+                    "attributes": {
+                        "type": "number",
+                        "min": 10,
+                        "max": 99
+                    }
+                },
+                {
+                    "name": "value5",
+                    "title": "This is the fith value",
+                    "tag": "select",
+                    "options": ["opt1", "opt2", "opt3"]
+                }
+            ]
+        }
+    ]
+}
