@@ -204,38 +204,37 @@ bool AsyncFSWebServer::load_config() {
 	configFile.readBytes(buf.get(), size);
 	configFile.close();
 	DEBUGLOG("191 JSON file size: %d bytes\r\n", size);
-	DynamicJsonBuffer jsonBuffer(1024);
-	//StaticJsonBuffer<1024> jsonBuffer;
-	JsonObject& json = jsonBuffer.parseObject(buf.get());
-
-	if (!json.success()) {
-		DEBUGLOG("Failed to parse config file\r\n");
+	DynamicJsonDocument jsonDoc(1024);
+	auto error = deserializeJson(jsonDoc, buf.get());
+	if (error) {
+		DEBUGLOG("Failed to parse config file. Error: %s\r\n", error.c_str());
 		return false;
 	}
+
 #ifndef RELEASE
 	String temp;
-	json.prettyPrintTo(temp);
+	serializeJsonPretty(jsonDoc, temp);
 	Serial.println(temp);
 #endif
 
-	_config.ssid = json["ssid"].as<const char *>();
+	_config.ssid = jsonDoc["ssid"].as<const char *>();
 
-	_config.password = json["pass"].as<const char *>();
+	_config.password = jsonDoc["pass"].as<const char *>();
 
-	_config.ip = IPAddress(json["ip"][0], json["ip"][1], json["ip"][2], json["ip"][3]);
-	_config.netmask = IPAddress(json["netmask"][0], json["netmask"][1], json["netmask"][2], json["netmask"][3]);
-	_config.gateway = IPAddress(json["gateway"][0], json["gateway"][1], json["gateway"][2], json["gateway"][3]);
-	_config.dns = IPAddress(json["dns"][0], json["dns"][1], json["dns"][2], json["dns"][3]);
+	_config.ip = IPAddress(jsonDoc["ip"][0], jsonDoc["ip"][1], jsonDoc["ip"][2], jsonDoc["ip"][3]);
+	_config.netmask = IPAddress(jsonDoc["netmask"][0], jsonDoc["netmask"][1], jsonDoc["netmask"][2], jsonDoc["netmask"][3]);
+	_config.gateway = IPAddress(jsonDoc["gateway"][0], jsonDoc["gateway"][1], jsonDoc["gateway"][2], jsonDoc["gateway"][3]);
+	_config.dns = IPAddress(jsonDoc["dns"][0], jsonDoc["dns"][1], jsonDoc["dns"][2], jsonDoc["dns"][3]);
 
-	_config.dhcp = json["dhcp"].as<bool>();
+	_config.dhcp = jsonDoc["dhcp"].as<bool>();
 
-	_config.ntpServerName = json["ntp"].as<const char *>();
-	_config.updateNTPTimeEvery = json["NTPperiod"].as<long>();
-	_config.timezone = json["timeZone"].as<long>();
-	_config.daylight = json["daylight"].as<long>();
-	_config.deviceName = json["deviceName"].as<const char *>();
+	_config.ntpServerName = jsonDoc["ntp"].as<const char *>();
+	_config.updateNTPTimeEvery = jsonDoc["NTPperiod"].as<long>();
+	_config.timezone = jsonDoc["timeZone"].as<long>();
+	_config.daylight = jsonDoc["daylight"].as<long>();
+	_config.deviceName = jsonDoc["deviceName"].as<const char *>();
 
-	//config.connectionLed = json["led"];
+	//config.connectionLed = jsonDoc["led"];
 
 	DEBUGLOG("Data initialized.\r\n");
 	DEBUGLOG("SSID: %s ", _config.ssid.c_str());
@@ -271,44 +270,43 @@ void AsyncFSWebServer::defaultConfig() {
 bool AsyncFSWebServer::save_config() {
 	//flag_config = false;
 	DEBUGLOG("Save config\r\n");
-	DynamicJsonBuffer jsonBuffer(512);
-	//StaticJsonBuffer<1024> jsonBuffer;
-	JsonObject& json = jsonBuffer.createObject();
-	json["ssid"] = _config.ssid;
-	json["pass"] = _config.password;
+	DynamicJsonDocument jsonDoc(512);
+	
+	jsonDoc["ssid"] = _config.ssid;
+	jsonDoc["pass"] = _config.password;
 
-	JsonArray& jsonip = json.createNestedArray("ip");
+	JsonArray jsonip = jsonDoc.createNestedArray("ip");
 	jsonip.add(_config.ip[0]);
 	jsonip.add(_config.ip[1]);
 	jsonip.add(_config.ip[2]);
 	jsonip.add(_config.ip[3]);
 
-	JsonArray& jsonNM = json.createNestedArray("netmask");
+	JsonArray jsonNM = jsonDoc.createNestedArray("netmask");
 	jsonNM.add(_config.netmask[0]);
 	jsonNM.add(_config.netmask[1]);
 	jsonNM.add(_config.netmask[2]);
 	jsonNM.add(_config.netmask[3]);
 
-	JsonArray& jsonGateway = json.createNestedArray("gateway");
+	JsonArray jsonGateway = jsonDoc.createNestedArray("gateway");
 	jsonGateway.add(_config.gateway[0]);
 	jsonGateway.add(_config.gateway[1]);
 	jsonGateway.add(_config.gateway[2]);
 	jsonGateway.add(_config.gateway[3]);
 
-	JsonArray& jsondns = json.createNestedArray("dns");
+	JsonArray jsondns = jsonDoc.createNestedArray("dns");
 	jsondns.add(_config.dns[0]);
 	jsondns.add(_config.dns[1]);
 	jsondns.add(_config.dns[2]);
 	jsondns.add(_config.dns[3]);
 
-	json["dhcp"] = _config.dhcp;
-	json["ntp"] = _config.ntpServerName;
-	json["NTPperiod"] = _config.updateNTPTimeEvery;
-	json["timeZone"] = _config.timezone;
-	json["daylight"] = _config.daylight;
-	json["deviceName"] = _config.deviceName;
+	jsonDoc["dhcp"] = _config.dhcp;
+	jsonDoc["ntp"] = _config.ntpServerName;
+	jsonDoc["NTPperiod"] = _config.updateNTPTimeEvery;
+	jsonDoc["timeZone"] = _config.timezone;
+	jsonDoc["daylight"] = _config.daylight;
+	jsonDoc["deviceName"] = _config.deviceName;
 
-	//json["led"] = config.connectionLed;
+	//jsonDoc["led"] = config.connectionLed;
 
 	//TODO add AP data to html
 	File configFile = _fs->open(CONFIG_FILE, "w");
@@ -320,11 +318,10 @@ bool AsyncFSWebServer::save_config() {
 
 #ifndef RELEASE
 	String temp;
-	json.prettyPrintTo(temp);
+	serializeJsonPretty(jsonDoc, temp);
 	Serial.println(temp);
 #endif
-
-	json.printTo(configFile);
+	serializeJson(jsonDoc, configFile);
 	configFile.flush();
 	configFile.close();
 	return true;
@@ -353,21 +350,20 @@ bool AsyncFSWebServer::load_user_config(String name, String &value) {
 	configFile.readBytes(buf.get(), size);
 	configFile.close();
 	DEBUGLOG("340 JSON file size: %d bytes\r\n", size);
-	DynamicJsonBuffer jsonBuffer(1024);
-	//StaticJsonBuffer<1024> jsonBuffer;
-	JsonObject& json = jsonBuffer.parseObject(buf.get());
-
-	if (!json.success()) {
-		DEBUGLOG("Failed to parse config file\r\n");
+	DynamicJsonDocument jsonDoc(1024);
+	auto error = deserializeJson(jsonDoc, buf.get());
+	if (error) {
+		DEBUGLOG("Failed to parse config file. Error: %s\r\n", error.c_str());
 		return false;
 	}
+
 #ifndef RELEASE
 	String temp;
-	json.prettyPrintTo(temp);
+	serializeJsonPretty(jsonDoc, temp);
 	Serial.println(temp);
 #endif
 
-	value = json[name].asString();
+	value = jsonDoc[name].as<char*>();
 
 	DEBUGLOG("Data initialized.\r\n");
 	DEBUGLOG("SSID: %s ", _config.ssid.c_str());
@@ -422,12 +418,11 @@ bool AsyncFSWebServer::save_user_config(String name, String value) {
 	configFile.readBytes(buf.get(), size);
 	configFile.close();
 	DEBUGLOG("Read JSON file size: %d bytes\r\n", size);
-	DynamicJsonBuffer jsonBuffer(1024);
-	//StaticJsonBuffer<1024> jsonBuffer;
-	JsonObject& json = jsonBuffer.parseObject(buf.get());
+	DynamicJsonDocument jsonDoc(1024);
+	auto error = deserializeJson(jsonDoc, buf.get());
 
-	if (!json.success()) {
-		DEBUGLOG("Failed to parse config file\r\n");
+	if (error) {
+		DEBUGLOG("Failed to parse config file. Error: %s\r\n", error.c_str());
 		return false;
 	}
 	else
@@ -435,7 +430,7 @@ bool AsyncFSWebServer::save_user_config(String name, String value) {
 		DEBUGLOG("Parse User config file\r\n");
 	}
 
-	json[name] = value;
+	jsonDoc[name] = value;
 
 	configFile = _fs->open(USER_CONFIG_FILE, "w");
 	if (!configFile) {
@@ -447,11 +442,10 @@ bool AsyncFSWebServer::save_user_config(String name, String value) {
 #ifndef RELEASE
 	DEBUGLOG("Save user config \r\n");
 	String temp;
-	json.prettyPrintTo(temp);
+	serializeJsonPretty(jsonDoc, temp);
 	Serial.println(temp);
 #endif
-
-	json.printTo(configFile);
+	serializeJson(jsonDoc, configFile);
 	configFile.flush();
 	configFile.close();
 	return true;
@@ -518,29 +512,29 @@ bool AsyncFSWebServer::loadHTTPAuth() {
 	configFile.readBytes(buf.get(), size);
 	configFile.close();
 	DEBUGLOG("JSON secret file size: %d bytes\n", size);
-	DynamicJsonBuffer jsonBuffer(256);
-	//StaticJsonBuffer<256> jsonBuffer;
-	JsonObject& json = jsonBuffer.parseObject(buf.get());
-
-	if (!json.success()) {
+	DynamicJsonDocument jsonDoc(256);
+	auto error = deserializeJson(jsonDoc, buf.get());
+	
+	if (error) {
 #ifndef RELEASE
 		String temp;
-		json.prettyPrintTo(temp);
+		serializeJsonPretty(jsonDoc, temp);
 		DBG_OUTPUT_PORT.println(temp);
-		DBG_OUTPUT_PORT.println("Failed to parse secret file");
+		DBG_OUTPUT_PORT.println("Failed to parse secret file. Error: ");
+		DBG_OUTPUT_PORT.println(error.c_str());
 #endif // RELEASE
 		_httpAuth.auth = false;
 		return false;
 	}
 #ifndef RELEASE
 	String temp;
-	json.prettyPrintTo(temp);
+	serializeJsonPretty(jsonDoc, temp);
 	DBG_OUTPUT_PORT.println(temp);
 #endif // RELEASE
-
-	_httpAuth.auth = json["auth"];
-	_httpAuth.wwwUsername = json["user"].as<String>();
-	_httpAuth.wwwPassword = json["pass"].as<String>();
+	
+	_httpAuth.auth = jsonDoc["auth"];
+	_httpAuth.wwwUsername = jsonDoc["user"].as<String>();
+	_httpAuth.wwwPassword = jsonDoc["pass"].as<String>();
 
 	DEBUGLOG(_httpAuth.auth ? "Secret initialized.\r\n" : "Auth disabled.\r\n");
 	if (_httpAuth.auth) {
@@ -1176,12 +1170,11 @@ void AsyncFSWebServer::send_wwwauth_configuration_html(AsyncWebServerRequest *re
 bool AsyncFSWebServer::saveHTTPAuth() {
 	//flag_config = false;
 	DEBUGLOG("Save secret\r\n");
-	DynamicJsonBuffer jsonBuffer(256);
-	//StaticJsonBuffer<256> jsonBuffer;
-	JsonObject& json = jsonBuffer.createObject();
-	json["auth"] = _httpAuth.auth;
-	json["user"] = _httpAuth.wwwUsername;
-	json["pass"] = _httpAuth.wwwPassword;
+	DynamicJsonDocument jsonDoc(256);
+	
+	jsonDoc["auth"] = _httpAuth.auth;
+	jsonDoc["user"] = _httpAuth.wwwUsername;
+	jsonDoc["pass"] = _httpAuth.wwwPassword;
 
 	//TODO add AP data to html
 	File configFile = _fs->open(SECRET_FILE, "w");
@@ -1193,11 +1186,10 @@ bool AsyncFSWebServer::saveHTTPAuth() {
 
 #ifndef RELEASE
 	String temp;
-	json.prettyPrintTo(temp);
+	serializeJsonPretty(jsonDoc, temp);
 	Serial.println(temp);
 #endif // RELEASE
-
-	json.printTo(configFile);
+	serializeJson(jsonDoc, configFile);
 	configFile.flush();
 	configFile.close();
 	return true;
