@@ -7,3 +7,4 @@ __vm/
 .vs/
 *.sln
 .vscode/
+build/
