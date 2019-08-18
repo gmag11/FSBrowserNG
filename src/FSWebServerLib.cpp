@@ -39,6 +39,17 @@ void AsyncFSWebServer::s_secondTick(void* arg) {
 	if (self->_evs.count() > 0) {
 		self->sendTimeData();
 	}
+
+//Check connection timeout if enabled
+//TODO: as soon as ESP8266Wifi allows setting a timeout on waitForConnectResult use this instead of our own timeout mechanism
+#if (AP_ENABLE_TIMEOUT > 0)
+	if (self->wifiStatus == FS_STAT_CONNECTING)	{
+		if (++self->connectionTimout >= AP_ENABLE_TIMEOUT){
+			DBG_OUTPUT_PORT.printf("Connection Timeout, switching to AP Mode.\r\n");
+			self->configureWifiAP();
+		}
+	}
+#endif //AP_ENABLE_TIMEOUT
 }
 
 void AsyncFSWebServer::sendTimeData() {
@@ -87,6 +98,9 @@ void flashLED(int pin, int times, int delayTime) {
 
 void AsyncFSWebServer::begin(FS* fs) {
 	_fs = fs;
+	
+	connectionTimout = 0;
+	
 	DBG_OUTPUT_PORT.begin(115200);
 	DBG_OUTPUT_PORT.print("\n\n");
 #ifndef RELEASE
@@ -560,8 +574,16 @@ void AsyncFSWebServer::handle() {
 void AsyncFSWebServer::configureWifiAP() {
 	DEBUGLOG(__PRETTY_FUNCTION__);
 	DEBUGLOG("\r\n");
-	//WiFi.disconnect();
+
+	if (WiFi.status() == WL_CONNECTED) {
+		WiFi.disconnect();
+	}
+	
 	WiFi.mode(WIFI_AP);
+
+	wifiStatus = FS_STAT_APMODE;
+	connectionTimout = 0;
+
 	String APname = _apConfig.APssid + (String)ESP.getChipId();
 	if (_httpAuth.auth) {
 		WiFi.softAP(APname.c_str(), _httpAuth.wwwPassword.c_str());
@@ -574,6 +596,8 @@ void AsyncFSWebServer::configureWifiAP() {
 	if (CONNECTION_LED >= 0) {
 		flashLED(CONNECTION_LED, 3, 250);
 	}
+
+	DBG_OUTPUT_PORT.printf("AP Mode enabled. SSID: %s IP: %s\r\n", WiFi.softAPSSID().c_str(), WiFi.softAPIP().toString().c_str());
 }
 
 void AsyncFSWebServer::configureWifi() {
@@ -593,10 +617,15 @@ void AsyncFSWebServer::configureWifi() {
 		DEBUGLOG("NO DHCP\r\n");
 		WiFi.config(_config.ip, _config.gateway, _config.netmask, _config.dns);
 	}
+	
+	connectionTimout = 0;
+	wifiStatus = FS_STAT_CONNECTING;
 
+//Only usw wait waitForConnectResult if the timeout is not enabled to not mess with the timeout
+//TODO: as soon as ESP8266Wifi allows setting a timeout on waitForConnectResult use this instead of our own timeout mechanism
+#if (AP_ENABLE_TIMEOUT <= 0)
 	WiFi.waitForConnectResult();
-
-
+#endif //AP_ENABLE_TIMEOUT
 }
 
 void AsyncFSWebServer::ConfigureOTA(String password) {
@@ -660,6 +689,9 @@ void AsyncFSWebServer::onWiFiConnectedGotIP(WiFiEventStationModeGotIP data) {
 	if (_config.updateNTPTimeEvery > 0) { // Enable NTP sync
 		updateTimeFromNTP = true;
 	}
+	
+	connectionTimout = 0;
+	wifiStatus = FS_STAT_CONNECTED;
 }
 
 
