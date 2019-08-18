@@ -34,6 +34,8 @@
 #define CONNECTION_LED -1 // Connection LED pin (Built in). -1 to disable
 #define AP_ENABLE_BUTTON 5 // Button pin to enable AP during startup for configuration. -1 to disable
 
+#define AP_ENABLE_TIMEOUT 90 // (Seconds, max 255) If the device can not connect to WiFi it will switch to AP mode after this time. -1 to disable
+
 // #define HIDE_CONFIG
 #define CONFIG_FILE "/config.json"
 #define USER_CONFIG_FILE "/userconfig.json"
@@ -70,6 +72,12 @@ typedef struct {
     String wwwUsername;
     String wwwPassword;
 } strHTTPAuth;
+
+typedef enum {
+    FS_STAT_CONNECTING,
+    FS_STAT_CONNECTED,
+    FS_STAT_APMODE
+} enWifiStatus;
 
 class AsyncFSWebServer : public AsyncWebServer {
 public:
@@ -112,6 +120,8 @@ protected:
 	WiFiEventHandler onStationModeConnectedHandler, onStationModeDisconnectedHandler, onStationModeGotIPHandler;
 
     //uint currentWifiStatus;
+    enWifiStatus wifiStatus;
+    uint8_t connectionTimout;
 
     Ticker _secondTk;
     bool _secondFlag;
