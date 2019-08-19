@@ -34,6 +34,8 @@
 #define CONNECTION_LED -1 // Connection LED pin (Built in). -1 to disable
 #define AP_ENABLE_BUTTON 5 // Button pin to enable AP during startup for configuration. -1 to disable
 
+#define AP_ENABLE_TIMEOUT 90 // (Seconds, max 255) If the device can not connect to WiFi it will switch to AP mode after this time. -1 to disable
+
 // #define HIDE_CONFIG
 #define CONFIG_FILE "/config.json"
 #define USER_CONFIG_FILE "/userconfig.json"
@@ -71,6 +73,12 @@ typedef struct {
     String wwwPassword;
 } strHTTPAuth;
 
+typedef enum {
+    FS_STAT_CONNECTING,
+    FS_STAT_CONNECTED,
+    FS_STAT_APMODE
+} enWifiStatus;
+
 class AsyncFSWebServer : public AsyncWebServer {
 public:
     AsyncFSWebServer(uint16_t port);
@@ -93,6 +101,10 @@ public:
 	bool load_user_config(String name, long &value);
 	static String urldecode(String input); // (based on https://code.google.com/p/avr-netino/)
 
+    //Clear the configuration data (not the user config!) and optional reset the device
+    void clearConfig(bool reset);
+    //Clear the user configuration data (not the Wifi config!) and optional reset the device
+    void clearUserConfig(bool reset);
 
 private:
 	JSON_CALLBACK_SIGNATURE;
@@ -112,6 +124,8 @@ protected:
 	WiFiEventHandler onStationModeConnectedHandler, onStationModeDisconnectedHandler, onStationModeGotIPHandler;
 
     //uint currentWifiStatus;
+    enWifiStatus wifiStatus;
+    uint8_t connectionTimout;
 
     Ticker _secondTk;
     bool _secondFlag;

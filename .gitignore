@@ -6,3 +6,5 @@ Debug/
 __vm/
 .vs/
 *.sln
+.vscode/
+build/
