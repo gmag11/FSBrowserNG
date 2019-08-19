@@ -101,6 +101,10 @@ public:
 	bool load_user_config(String name, long &value);
 	static String urldecode(String input); // (based on https://code.google.com/p/avr-netino/)
 
+    //Clear the configuration data (not the user config!) and optional reset the device
+    void clearConfig(bool reset);
+    //Clear the user configuration data (not the Wifi config!) and optional reset the device
+    void clearUserConfig(bool reset);
 
 private:
 	JSON_CALLBACK_SIGNATURE;

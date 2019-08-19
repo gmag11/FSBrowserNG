@@ -341,6 +341,22 @@ bool AsyncFSWebServer::save_config() {
 	return true;
 }
 
+void AsyncFSWebServer::clearConfig(bool reset)
+{
+	if (_fs->exists(CONFIG_FILE)) {
+		_fs->remove(CONFIG_FILE);
+	}
+
+	if (_fs->exists(SECRET_FILE)) {
+		_fs->remove(SECRET_FILE);
+	}
+
+	if (reset) {
+		_fs->end();
+		ESP.restart();
+	}
+}
+
 bool AsyncFSWebServer::load_user_config(String name, String &value) {
 	File configFile = _fs->open(USER_CONFIG_FILE, "r");
 	if (!configFile) {
@@ -465,7 +481,19 @@ bool AsyncFSWebServer::save_user_config(String name, String value) {
 	return true;
 }
 
-bool AsyncFSWebServer::load_user_config(String name, int &value) {
+void AsyncFSWebServer::clearUserConfig(bool reset) {
+	if (_fs->exists(USER_CONFIG_FILE)) {
+		_fs->remove(USER_CONFIG_FILE);
+	}
+
+	if (reset) {
+		_fs->end();
+		ESP.restart();
+	}
+}
+
+bool AsyncFSWebServer::load_user_config(String name, int &value)
+{
 	String sTemp = "";
 	bool bTemp = load_user_config(name, sTemp);
 	value = sTemp.toInt();
